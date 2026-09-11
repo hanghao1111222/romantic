@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" /></a>
+  <a href="https://github.com/hanghao1111222/romantic"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" /></a>
   <img src="https://img.shields.io/badge/Render-WebGL%202%20%2B%20Canvas%202D-ff69b4.svg" alt="Render" />
   <img src="https://img.shields.io/badge/Dependencies-Zero%20(Vanilla%20JS)-success.svg" alt="Zero Dependencies" />
   <img src="https://img.shields.io/badge/FPS-60%20Fluid-brightgreen.svg" alt="60 FPS" />
@@ -16,8 +16,8 @@
 ## 🌐 Live Demos / 在线体验
 
 无需安装任何环境，手机或电脑浏览器点击即开：
-- 🌹 **[3D 粒子花朵实验室 (3D Botanical Lab)](index.html)** — 9 款数学花型 · 16 款璀璨配色 · 源码流 · 3D 线框
-- ⚡ **[粒子萌宠工作室 (Particle Mascot Studio)](particle_mascot_studio.html)** — 皮卡丘/蓝兔/粉猫/紫狐 · 3D 视差拖拽 · 粒子爆炸散开
+- 🌹 **[3D 粒子花朵实验室 (3D Botanical Lab)](https://hanghao1111222.github.io/romantic/)** — 9 款数学花型 · 16 款璀璨配色 · 源码流 · 3D 线框
+- ⚡ **[粒子萌宠工作室 (Particle Mascot Studio)](https://hanghao1111222.github.io/romantic/particle_mascot_studio.html)** — 皮卡丘/蓝兔/粉猫/紫狐 · 3D 视差拖拽 · 粒子爆炸散开
 
 ---
 
@@ -91,8 +91,8 @@
 
 ### 方式 1：浏览器直接打开
 直接双击根目录下的任意 HTML 文件：
-- `index.html` (3D 粒子花朵实验室)
-- `particle_mascot_studio.html` (粒子萌宠工作室)
+- `https://hanghao1111222.github.io/romantic/` (3D 粒子花朵实验室)
+- `https://hanghao1111222.github.io/romantic/particle_mascot_studio.html` (粒子萌宠工作室)
 
 ### 方式 2：Mac 原生独立全屏模式
 在 macOS 上直接双击：
