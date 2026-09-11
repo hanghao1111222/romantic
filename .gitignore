@@ -1,0 +1,19 @@
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Python cache & backups
+__pycache__/
+*.py[cod]
+*$py.class
+*.bak
+
+# Temporary / Scratch data
+scratch/
+chrome_user_data/
+*.log
+
+# Duplicate backups
+* 2.zip

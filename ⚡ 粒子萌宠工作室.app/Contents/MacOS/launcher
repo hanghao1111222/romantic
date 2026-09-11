@@ -1,0 +1,15 @@
+#!/bin/bash
+CURRENT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+cd "$CURRENT_DIR"
+
+CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+EDGE="/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"
+HTML="$CURRENT_DIR/particle_mascot_studio.html"
+
+if [ -f "$CHROME" ]; then
+    "$CHROME" --app="file://$HTML" --window-size=1300,920 &
+elif [ -f "$EDGE" ]; then
+    "$EDGE" --app="file://$HTML" --window-size=1300,920 &
+else
+    python3 "$CURRENT_DIR/start_mascot.py" &
+fi

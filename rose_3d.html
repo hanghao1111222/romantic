@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 梦幻粒子玫瑰 · 极致视觉版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background-color: #05060b;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            color: #fff;
+            user-select: none;
+        }
+        #webgl-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+        /* 视频同款背景代码排版 */
+        .code-overlay {
+            position: absolute;
+            top: 40px;
+            left: 50px;
+            z-index: 2;
+            pointer-events: none;
+            font-family: "Menlo", "Consolas", "Courier New", monospace;
+            font-size: 12px;
+            line-height: 1.7;
+            color: rgba(90, 115, 145, 0.45);
+            max-width: 450px;
+        }
+        .code-overlay .kw { color: rgba(230, 80, 110, 0.5); }
+        .code-overlay .fn { color: rgba(100, 180, 245, 0.5); }
+        .code-overlay .str { color: rgba(140, 220, 140, 0.5); }
+        
+        /* 底部操作面板 */
+        .hud {
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(15, 20, 32, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 13px;
+            color: #b0c0d8;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 12px;
+        }
+        .btn:hover {
+            background: rgba(255, 70, 110, 0.3);
+            border-color: rgba(255, 70, 110, 0.6);
+            transform: translateY(-1px);
+        }
+        .btn.active {
+            background: #ff2a55;
+            border-color: #ff2a55;
+            box-shadow: 0 0 12px rgba(255, 42, 85, 0.5);
+        }
+    </style>
+    <!-- 引入 Three.js 与 OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div id="webgl-container"></div>
+
+    <div class="code-overlay">
+        <span class="kw">class</span> <span class="fn">RoseQuantumEmitter</span> {<br>
+        &nbsp;&nbsp;<span class="kw">constructor</span>() {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.<span class="fn">particles</span> = 35000;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.<span class="fn">spiralRev</span> = 20 * Math.PI;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.<span class="fn">bloomCoeff</span> = 3.4;<br>
+        &nbsp;&nbsp;}<br><br>
+        &nbsp;&nbsp;<span class="fn">evalSurface</span>(t, x) {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">const</span> p = (PI / 2) * exp(-t / (8 * PI));<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">const</span> u = 1 - pow(1 - (3.4 * t % 2PI) / PI, 4) / 2;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">const</span> y = 2 * pow(x*x - x, 2) * sin(p);<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> [ u * (x*sin(p) + y*cos(p)), u * (x*cos(p) - y*sin(p)) ];<br>
+        &nbsp;&nbsp;}<br><br>
+        &nbsp;&nbsp;<span class="fn">heartbeatPulse</span>(time) {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> 1.0 + 0.05 * sin(time * 2.8);<br>
+        &nbsp;&nbsp;}<br>
+        }
+    </div>
+
+    <div class="hud">
+        <span>🌹 3D 梦幻粒子玫瑰</span>
+        <button class="btn active" onclick="switchTheme('ruby')">绯红浪漫</button>
+        <button class="btn" onclick="switchTheme('blue')">蓝色妖姬</button>
+        <button class="btn" onclick="switchTheme('gold')">流光香槟</button>
+        <button class="btn" onclick="switchTheme('purple')">极光幽紫</button>
+        <button class="btn" onclick="toggleRotate()">⏯️ 旋转/暂停</button>
+        <span style="opacity: 0.6; font-size: 11px;">🖱️ 鼠标按住拖拽 360° / 滚轮缩放</span>
+    </div>
+
+    <script>
+        // ==================== 1. Three.js 场景与渲染器初始化 ====================
+        const container = document.getElementById('webgl-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x05060b, 0.0018);
+
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 3000);
+        camera.position.set(120, 160, 420);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 1.2;
+        controls.target.set(30, 0, 0);
+
+        // ==================== 2. 创建 3D 线框立方体 ====================
+        const cubeSize = 240;
+        const boxGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+        const edges = new THREE.EdgesGeometry(boxGeometry);
+        const boxLine = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ color: 0x4a6080, transparent: true, opacity: 0.45 })
+        );
+        boxLine.position.set(30, -10, 0);
+        scene.add(boxLine);
+
+        // ==================== 3. 粒子发光贴图生成 ====================
+        function createParticleGlowTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            gradient.addColorStop(0.25, 'rgba(255, 255, 255, 0.8)');
+            gradient.addColorStop(0.55, 'rgba(255, 180, 200, 0.4)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 64, 64);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const particleTexture = createParticleGlowTexture();
+
+        // ==================== 4. 纯正 3D 数学玫瑰曲面点阵生成 ====================
+        const PARTICLE_COUNT = 36000;
+        const positions = new Float32Array(PARTICLE_COUNT * 3);
+        const colors = new Float32Array(PARTICLE_COUNT * 3);
+        const basePositions = new Float32Array(PARTICLE_COUNT * 3);
+        const types = new Float32Array(PARTICLE_COUNT); // 0: petal, 1: stem, 2: ember
+        const phases = new Float32Array(PARTICLE_COUNT);
+
+        let currentThemeKey = 'ruby';
+
+        const THEMES = {
+            ruby: {
+                edge: new THREE.Color(0xfff0f5),
+                high: new THREE.Color(0xff2a55),
+                mid:  new THREE.Color(0xd90429),
+                dark: new THREE.Color(0x6a040f),
+                core: new THREE.Color(0xfff3b0),
+                sepal: new THREE.Color(0x2d6a4f),
+                stem: new THREE.Color(0x1b4332),
+                box: 0x4a6080
+            },
+            blue: {
+                edge: new THREE.Color(0xe0fbfc),
+                high: new THREE.Color(0x00b4d8),
+                mid:  new THREE.Color(0x0077b6),
+                dark: new THREE.Color(0x03045e),
+                core: new THREE.Color(0xffffff),
+                sepal: new THREE.Color(0x1b4332),
+                stem: new THREE.Color(0x081c15),
+                box: 0x0077b6
+            },
+            gold: {
+                edge: new THREE.Color(0xfffae6),
+                high: new THREE.Color(0xffc300),
+                mid:  new THREE.Color(0xffaa00),
+                dark: new THREE.Color(0x784212),
+                core: new THREE.Color(0xffffff),
+                sepal: new THREE.Color(0x33691e),
+                stem: new THREE.Color(0x1b5e20),
+                box: 0xb8860b
+            },
+            purple: {
+                edge: new THREE.Color(0xf3e8ff),
+                high: new THREE.Color(0xc77dff),
+                mid:  new THREE.Color(0x9d4edd),
+                dark: new THREE.Color(0x3c096c),
+                core: new THREE.Color(0xffffff),
+                sepal: new THREE.Color(0x2d6a4f),
+                stem: new THREE.Color(0x1b4332),
+                box: 0x9d4edd
+            }
+        };
+
+        function generateRosePoints() {
+            const theme = THEMES[currentThemeKey];
+            const petalCount = Math.floor(PARTICLE_COUNT * 0.72);
+            const stemCount  = Math.floor(PARTICLE_COUNT * 0.20);
+            const emberCount = PARTICLE_COUNT - petalCount - stemCount;
+
+            let idx = 0;
+
+            // 1. 玫瑰花瓣曲面采样
+            for (let i = 0; i < petalCount; i++) {
+                const tNorm = Math.pow(Math.random(), 0.82);
+                const t = tNorm * (20.0 * Math.PI) + 3.8 * Math.PI;
+                const p = (Math.PI / 2.0) * Math.exp(-t / (8.0 * Math.PI));
+                const ripple = Math.sin(15.0 * t) / 130.0;
+
+                const modT = (3.4 * t) % (2.0 * Math.PI);
+                const u = 1.0 - Math.pow(1.0 - modT / Math.PI, 4) / 2.0 + ripple;
+
+                // 加强花瓣轮廓边缘采样
+                const isEdge = Math.random() < 0.38;
+                const x = isEdge ? (0.86 + Math.random() * 0.14) : (0.05 + Math.random() * 0.9);
+                const yProf = 2.0 * Math.pow(x * x - x, 2) * Math.sin(p);
+
+                const r = u * (x * Math.sin(p) + yProf * Math.cos(p));
+                const h = u * (x * Math.cos(p) - yProf * Math.sin(p));
+
+                const scale = 110.0;
+                const px = r * Math.cos(t) * scale + (Math.random() - 0.5) * 1.5 + 30;
+                const pz = r * Math.sin(t) * scale + (Math.random() - 0.5) * 1.5;
+                const py = h * scale - 12.0 + (Math.random() - 0.5) * 1.5;
+
+                basePositions[idx * 3]     = px;
+                basePositions[idx * 3 + 1] = py;
+                basePositions[idx * 3 + 2] = pz;
+
+                positions[idx * 3]     = px;
+                positions[idx * 3 + 1] = py;
+                positions[idx * 3 + 2] = pz;
+
+                types[idx] = 0;
+                phases[idx] = Math.random() * Math.PI * 2;
+
+                // 着色分配
+                let col = new THREE.Color();
+                const distC = Math.sqrt(Math.pow(px - 30, 2) + pz * pz);
+
+                if (isEdge) {
+                    col.copy(theme.edge);
+                } else if (distC < 22 && py > 0) {
+                    col.copy(theme.core);
+                } else if (distC < 55) {
+                    col.lerpColors(theme.high, theme.mid, Math.random() * 0.5);
+                } else if (x < 0.3 || py < -10) {
+                    col.copy(theme.dark);
+                } else {
+                    col.copy(theme.mid);
+                }
+
+                colors[idx * 3]     = col.r;
+                colors[idx * 3 + 1] = col.g;
+                colors[idx * 3 + 2] = col.b;
+                idx++;
+            }
+
+            // 2. 花萼与花茎
+            for (let i = 0; i < stemCount; i++) {
+                const v = Math.random();
+                const theta = Math.random() * Math.PI * 2;
+                let px, py, pz, col = new THREE.Color();
+
+                if (v < 0.35) { // 萼片
+                    const leafAng = theta * 5.0;
+                    const rSepal = (1.0 - v / 0.35) * 46.0 * Math.pow(Math.abs(Math.sin(leafAng)), 0.6);
+                    px = rSepal * Math.cos(theta) + 30;
+                    pz = rSepal * Math.sin(theta);
+                    py = -15.0 - v * 28.0;
+                    col.copy(theme.sepal);
+                } else { // 花茎
+                    const tStem = (v - 0.35) / 0.65;
+                    const rStem = 2.0 + Math.random() * 3.5;
+                    const bendX = Math.sin(tStem * 3.5) * 8.0;
+                    const bendZ = Math.cos(tStem * 2.8) * 5.0;
+                    px = rStem * Math.cos(theta) + bendX + 30;
+                    pz = rStem * Math.sin(theta) + bendZ;
+                    py = -26.0 - tStem * 80.0;
+                    col.copy(theme.stem);
+                }
+
+                basePositions[idx * 3]     = px;
+                basePositions[idx * 3 + 1] = py;
+                basePositions[idx * 3 + 2] = pz;
+
+                positions[idx * 3]     = px;
+                positions[idx * 3 + 1] = py;
+                positions[idx * 3 + 2] = pz;
+
+                types[idx] = 1;
+                phases[idx] = Math.random() * Math.PI * 2;
+
+                colors[idx * 3]     = col.r;
+                colors[idx * 3 + 1] = col.g;
+                colors[idx * 3 + 2] = col.b;
+                idx++;
+            }
+
+            // 3. 弥散星尘
+            for (let i = 0; i < emberCount; i++) {
+                const rx = (Math.random() - 0.5) * cubeSize + 30;
+                const ry = (Math.random() - 0.5) * cubeSize - 10;
+                const rz = (Math.random() - 0.5) * cubeSize;
+
+                basePositions[idx * 3]     = rx;
+                basePositions[idx * 3 + 1] = ry;
+                basePositions[idx * 3 + 2] = rz;
+
+                positions[idx * 3]     = rx;
+                positions[idx * 3 + 1] = ry;
+                positions[idx * 3 + 2] = rz;
+
+                types[idx] = 2;
+                phases[idx] = Math.random() * Math.PI * 2;
+
+                const col = theme.edge;
+                colors[idx * 3]     = col.r;
+                colors[idx * 3 + 1] = col.g;
+                colors[idx * 3 + 2] = col.b;
+                idx++;
+            }
+
+            boxLine.material.color.setHex(theme.box);
+        }
+
+        generateRosePoints();
+
+        const particleGeometry = new THREE.BufferGeometry();
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const particleMaterial = new THREE.PointsMaterial({
+            size: 2.8,
+            vertexColors: true,
+            map: particleTexture,
+            transparent: true,
+            opacity: 0.88,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(particleSystem);
+
+        // ==================== 5. 交互控制与动画循环 ====================
+        function switchTheme(themeKey) {
+            currentThemeKey = themeKey;
+            document.querySelectorAll('.hud .btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            generateRosePoints();
+            particleGeometry.attributes.color.needsUpdate = true;
+        }
+
+        function toggleRotate() {
+            controls.autoRotate = !controls.autoRotate;
+        }
+
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = clock.getElapsedTime();
+
+            // 心跳与律动微澜
+            const beat = Math.sin(time * 2.6) * Math.sqrt(Math.abs(Math.cos(time * 2.6)));
+            const pulse = 1.0 + 0.045 * beat;
+
+            const posArr = particleGeometry.attributes.position.array;
+
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const i3 = i * 3;
+                const bx = basePositions[i3];
+                const by = basePositions[i3 + 1];
+                const bz = basePositions[i3 + 2];
+                const type = types[i];
+                const phase = phases[i];
+
+                if (type === 0) { // 花瓣微澜
+                    const wobble = 1.0 + 0.015 * Math.sin(time * 3.5 + phase);
+                    posArr[i3]     = 30 + (bx - 30) * pulse * wobble;
+                    posArr[i3 + 1] = by * pulse * wobble;
+                    posArr[i3 + 2] = bz * pulse * wobble;
+                } else if (type === 1) { // 花茎微弱缩放
+                    posArr[i3]     = 30 + (bx - 30) * (1.0 + 0.01 * beat);
+                    posArr[i3 + 1] = by;
+                    posArr[i3 + 2] = bz * (1.0 + 0.01 * beat);
+                } else { // 星尘飘荡
+                    posArr[i3]     = bx + Math.sin(time * 0.8 + phase) * 6.0;
+                    posArr[i3 + 1] = by + Math.cos(time * 0.8 + phase) * 6.0;
+                    posArr[i3 + 2] = bz + Math.sin(time * 0.5 + phase) * 4.0;
+                }
+            }
+
+            particleGeometry.attributes.position.needsUpdate = true;
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

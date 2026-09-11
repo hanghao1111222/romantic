@@ -1,0 +1,2815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>3D Particle Botanicals Lab · Generative Living Light</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #020403;
+  --panel-bg: rgba(6, 9, 14, 0.78);
+  --accent: #ff2d55;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100vw; height: 100vh; overflow: hidden;
+  background: var(--bg); color: #dddbd8; user-select: none;
+}
+
+#app-container {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: flex;
+}
+
+/* Left Code Editor Panel */
+#code-panel {
+  position: absolute; top: 0; left: 0; height: 100%;
+  width: 440px; max-width: 46vw; z-index: 10;
+  display: flex; flex-direction: column;
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 15px 0 45px rgba(0, 0, 0, 0.6);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+  pointer-events: auto;
+}
+
+#code-panel.collapsed {
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.editor-header {
+  height: 42px; background: rgba(9, 13, 20, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex; align-items: center; padding: 0 16px; gap: 10px;
+  flex-shrink: 0;
+}
+.window-dots { display: flex; gap: 7px; }
+.dot { width: 11px; height: 11px; border-radius: 50%; }
+.dot.red { background: #ff5f56; }
+.dot.yellow { background: #ffbd2e; }
+.dot.green { background: #27c93f; }
+
+.editor-tab {
+  margin-left: 8px; display: flex; align-items: center; gap: 6px;
+  color: #c9d1d9; font-size: 12px; font-family: "Menlo", "Consolas", monospace;
+}
+.scroll-status {
+  margin-left: auto; font-size: 11px; color: #58a6ff;
+  display: flex; align-items: center; gap: 5px; cursor: pointer;
+  padding: 3px 8px; border-radius: 12px; background: rgba(88, 166, 255, 0.12);
+  transition: all 0.2s;
+}
+.scroll-status:hover { background: rgba(88, 166, 255, 0.25); }
+
+.code-viewport {
+  flex: 1; overflow: hidden; position: relative;
+  font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+  font-size: 11.8px; line-height: 22px;
+}
+.code-scroll-content {
+  position: absolute; top: 0; left: 0; width: 100%;
+  will-change: transform;
+}
+
+.line {
+  display: flex; width: 100%; height: 22px; line-height: 22px;
+  white-space: pre;
+}
+.ln {
+  width: 48px; padding-right: 14px; text-align: right;
+  color: #38495f; user-select: none; flex-shrink: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.04);
+}
+.cl {
+  padding-left: 14px; color: #c9d1d9; overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kw   { color: #ff5370; font-weight: 600; }
+.fn   { color: #61afef; }
+.cls  { color: #e5c07b; font-weight: 600; }
+.str  { color: #98c379; }
+.num  { color: #d19a66; }
+.cm   { color: #6272a4; font-style: italic; }
+.bi   { color: #f1fa8c; }
+.self { color: #ff79c6; }
+.op   { color: #56b6c2; }
+.punc { color: #7f848e; }
+.var  { color: #abb2bf; }
+
+#stage {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+}
+canvas { display: block; width: 100%; height: 100%; }
+
+#hint {
+  position: fixed; top: 22px; left: 470px; font-size: 11px;
+  letter-spacing: .12em; color: #999890; transition: opacity .5s, left .4s;
+  pointer-events: none; z-index: 20;
+}
+#code-panel.collapsed ~ #hint { left: 25px; }
+#hint small { display: block; font-size: 10px; letter-spacing: .03em; color: #7a889b; margin-top: 5px; }
+
+/* Bottom Floating Control Dock */
+#ui {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 6px; align-items: center; padding: 8px 14px;
+  background: rgba(13, 17, 23, 0.88); border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 30px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6); transition: opacity .5s;
+  white-space: nowrap; z-index: 30;
+}
+body.quiet #ui, body.quiet #hint, body.quiet .popup-panel { opacity: 0; pointer-events: none; }
+button {
+  background: transparent; border: 0; color: #ddd; padding: 7px 13px;
+  cursor: pointer; border-radius: 20px; font: inherit; font-size: 12px;
+  transition: all .2s; display: flex; align-items: center; gap: 5px;
+}
+button:hover, button.active { background: #34322f; color: white; }
+button.primary { background: #ff2d55; color: white; box-shadow: 0 0 12px rgba(255, 45, 85, 0.5); }
+button.highlight { background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.2); }
+
+/* Modals & Popups */
+.popup-panel {
+  display: none; position: fixed; bottom: 82px; left: 50%; transform: translateX(-50%);
+  padding: 18px 22px; border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px; background: rgba(11, 16, 22, 0.95);
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75); z-index: 30;
+}
+
+#theme-menu { width: 380px; max-height: 60vh; overflow-y: auto; }
+.theme-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px;
+}
+.theme-item {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border-radius: 12px; cursor: pointer; background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08); transition: all 0.2s; font-size: 12px;
+}
+.theme-item:hover, .theme-item.active {
+  background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.35); transform: translateY(-1px);
+}
+.theme-color-dot {
+  width: 15px; height: 15px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3); flex-shrink: 0;
+}
+
+#style-menu { width: 370px; max-height: 60vh; overflow-y: auto; }
+.style-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.style-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+  border-radius: 12px; cursor: pointer; background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08); transition: all 0.2s; font-size: 12.5px;
+}
+.style-item:hover, .style-item.active {
+  background: rgba(255, 45, 85, 0.25); border-color: rgba(255, 45, 85, 0.5); transform: translateY(-1px);
+}
+
+#settings { width: 320px; }
+#settings label { display: grid; grid-template-columns: 85px 1fr 36px; gap: 8px; margin: 10px 0; align-items: center; color: #b9beb7; font-size: 12px; }
+input { accent-color: #ff2d55; width: 100%; cursor: pointer; }
+output { text-align: right; font-size: 11px; color: #aeb7ac; }
+#error { display: none; position: absolute; inset: 35% 10%; font-size: 16px; text-align: center; line-height: 2; color: #ff5252; }
+</style>
+</head>
+<body>
+<div id="app-container">
+  <!-- Left Code Editor View (Auto-scrolling Python source) -->
+  <aside id="code-panel">
+    <div class="editor-header">
+      <div class="window-dots">
+        <div class="dot red"></div>
+        <div class="dot yellow"></div>
+        <div class="dot green"></div>
+      </div>
+      <div class="editor-tab">
+        <span>🐍</span> particle_rose_3d.py
+      </div>
+      <div class="scroll-status" id="scroll-toggle" title="Click or press S to Pause / Resume scroll">
+        <span id="scroll-icon">▶</span> <span id="scroll-text">SCROLLING</span>
+      </div>
+    </div>
+    <div class="code-viewport" id="code-viewport">
+      <div class="code-scroll-content" id="code-scroll-content">
+<div class="line"><span class="ln">1</span><span class="cl"><span class="kw">import</span> <span class="var">tkinter</span> <span class="kw">as</span> <span class="var">tk</span>
+</span></div>
+<div class="line"><span class="ln">2</span><span class="cl"><span class="kw">import</span> <span class="bi">math</span>
+</span></div>
+<div class="line"><span class="ln">3</span><span class="cl"><span class="kw">import</span> <span class="bi">random</span>
+</span></div>
+<div class="line"><span class="ln">4</span><span class="cl"><span class="kw">import</span> <span class="bi">time</span>
+</span></div>
+<div class="line"><span class="ln">5</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">6</span><span class="cl"><span class="cm"># ==================== 1. Window Config & Global Parameters ====================</span>
+</span></div>
+<div class="line"><span class="ln">7</span><span class="cl"><span class="var">WIDTH</span><span class="op">,</span> <span class="var">HEIGHT</span> <span class="op">=</span> <span class="num">980</span><span class="op">,</span> <span class="num">800</span>
+</span></div>
+<div class="line"><span class="ln">8</span><span class="cl"><span class="var">FOV</span> <span class="op">=</span> <span class="num">440</span>              <span class="cm"># 3D Projection focal distance</span>
+</span></div>
+<div class="line"><span class="ln">9</span><span class="cl"><span class="var">CUBE_SIZE</span> <span class="op">=</span> <span class="num">145</span>        <span class="cm"># 3D Bounding cube half-size</span>
+</span></div>
+<div class="line"><span class="ln">10</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">11</span><span class="cl"><span class="cm"># Color palettes</span>
+</span></div>
+<div class="line"><span class="ln">12</span><span class="cl"><span class="var">PALETTES</span> <span class="op">=</span> <span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">13</span><span class="cl">    <span class="str">&quot;ruby_rose&quot;</span><span class="op">:</span> <span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">14</span><span class="cl">        <span class="str">&quot;name&quot;</span><span class="op">:</span> <span class="str">&quot;Ruby Red (Crimson Passion)&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">15</span><span class="cl">        <span class="str">&quot;edge&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ffebee&quot;</span><span class="op">,</span> <span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#ffcdd2&quot;</span><span class="op">,</span> <span class="str">&quot;#ff80ab&quot;</span><span class="op">]</span><span class="op">,</span>      <span class="cm"># Petal luminous rim glow</span>
+</span></div>
+<div class="line"><span class="ln">16</span><span class="cl">        <span class="str">&quot;petal_high&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ff1744&quot;</span><span class="op">,</span> <span class="str">&quot;#ff2a55&quot;</span><span class="op">,</span> <span class="str">&quot;#ff5252&quot;</span><span class="op">,</span> <span class="str">&quot;#f50057&quot;</span><span class="op">]</span><span class="op">,</span><span class="cm"># Petal illuminated surface</span>
+</span></div>
+<div class="line"><span class="ln">17</span><span class="cl">        <span class="str">&quot;petal_mid&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#d50000&quot;</span><span class="op">,</span> <span class="str">&quot;#c51162&quot;</span><span class="op">,</span> <span class="str">&quot;#e91e63&quot;</span><span class="op">,</span> <span class="str">&quot;#ad1457&quot;</span><span class="op">]</span><span class="op">,</span> <span class="cm"># Petal main body</span>
+</span></div>
+<div class="line"><span class="ln">18</span><span class="cl">        <span class="str">&quot;petal_dark&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#880e4f&quot;</span><span class="op">,</span> <span class="str">&quot;#4a001f&quot;</span><span class="op">,</span> <span class="str">&quot;#5c001e&quot;</span><span class="op">,</span> <span class="str">&quot;#3a0010&quot;</span><span class="op">]</span><span class="op">,</span><span class="cm"># Petal shadow / base</span>
+</span></div>
+<div class="line"><span class="ln">19</span><span class="cl">        <span class="str">&quot;core&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#fff9c4&quot;</span><span class="op">,</span> <span class="str">&quot;#fff59d&quot;</span><span class="op">,</span> <span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#ffe082&quot;</span><span class="op">]</span><span class="op">,</span>      <span class="cm"># Stamen golden glimmer</span>
+</span></div>
+<div class="line"><span class="ln">20</span><span class="cl">        <span class="str">&quot;sepal&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#2e7d32&quot;</span><span class="op">,</span> <span class="str">&quot;#4caf50&quot;</span><span class="op">,</span> <span class="str">&quot;#388e3c&quot;</span><span class="op">,</span> <span class="str">&quot;#1b5e20&quot;</span><span class="op">]</span><span class="op">,</span>     <span class="cm"># Calyx emerald green</span>
+</span></div>
+<div class="line"><span class="ln">21</span><span class="cl">        <span class="str">&quot;stem&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#1b5e20&quot;</span><span class="op">,</span> <span class="str">&quot;#2e7d32&quot;</span><span class="op">,</span> <span class="str">&quot;#144217&quot;</span><span class="op">,</span> <span class="str">&quot;#0d2b10&quot;</span><span class="op">]</span><span class="op">,</span>      <span class="cm"># Stem deep forest</span>
+</span></div>
+<div class="line"><span class="ln">22</span><span class="cl">        <span class="str">&quot;cube&quot;</span><span class="op">:</span> <span class="str">&quot;#405878&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">23</span><span class="cl">        <span class="str">&quot;bg&quot;</span><span class="op">:</span> <span class="str">&quot;#070913&quot;</span>
+</span></div>
+<div class="line"><span class="ln">24</span><span class="cl">    <span class="op">}</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">25</span><span class="cl">    <span class="str">&quot;pink_diamond&quot;</span><span class="op">:</span> <span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">26</span><span class="cl">        <span class="str">&quot;name&quot;</span><span class="op">:</span> <span class="str">&quot;Pink Diamond (Soft Elegance)&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">27</span><span class="cl">        <span class="str">&quot;edge&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#fff0f3&quot;</span><span class="op">,</span> <span class="str">&quot;#ffd6e0&quot;</span><span class="op">,</span> <span class="str">&quot;#ffccd5&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">28</span><span class="cl">        <span class="str">&quot;petal_high&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ff758f&quot;</span><span class="op">,</span> <span class="str">&quot;#ff8fa3&quot;</span><span class="op">,</span> <span class="str">&quot;#ffb3c1&quot;</span><span class="op">,</span> <span class="str">&quot;#ff4d6d&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">29</span><span class="cl">        <span class="str">&quot;petal_mid&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#c9184a&quot;</span><span class="op">,</span> <span class="str">&quot;#a4133c&quot;</span><span class="op">,</span> <span class="str">&quot;#ff4d6d&quot;</span><span class="op">,</span> <span class="str">&quot;#d90429&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">30</span><span class="cl">        <span class="str">&quot;petal_dark&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#590d22&quot;</span><span class="op">,</span> <span class="str">&quot;#800f2f&quot;</span><span class="op">,</span> <span class="str">&quot;#400817&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">31</span><span class="cl">        <span class="str">&quot;core&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#fff0f3&quot;</span><span class="op">,</span> <span class="str">&quot;#ffccd5&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">32</span><span class="cl">        <span class="str">&quot;sepal&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#388e3c&quot;</span><span class="op">,</span> <span class="str">&quot;#4caf50&quot;</span><span class="op">,</span> <span class="str">&quot;#2e7d32&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">33</span><span class="cl">        <span class="str">&quot;stem&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#1b5e20&quot;</span><span class="op">,</span> <span class="str">&quot;#2e7d32&quot;</span><span class="op">,</span> <span class="str">&quot;#144217&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">34</span><span class="cl">        <span class="str">&quot;cube&quot;</span><span class="op">:</span> <span class="str">&quot;#68507b&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">35</span><span class="cl">        <span class="str">&quot;bg&quot;</span><span class="op">:</span> <span class="str">&quot;#0c0814&quot;</span>
+</span></div>
+<div class="line"><span class="ln">36</span><span class="cl">    <span class="op">}</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">37</span><span class="cl">    <span class="str">&quot;blue_enchantress&quot;</span><span class="op">:</span> <span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">38</span><span class="cl">        <span class="str">&quot;name&quot;</span><span class="op">:</span> <span class="str">&quot;Sapphire Aurora (Glacial Blue)&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">39</span><span class="cl">        <span class="str">&quot;edge&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#e0fbfc&quot;</span><span class="op">,</span> <span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#caf0f8&quot;</span><span class="op">,</span> <span class="str">&quot;#90e0ef&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">40</span><span class="cl">        <span class="str">&quot;petal_high&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#00b4d8&quot;</span><span class="op">,</span> <span class="str">&quot;#0077b6&quot;</span><span class="op">,</span> <span class="str">&quot;#48cae4&quot;</span><span class="op">,</span> <span class="str">&quot;#0096c7&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">41</span><span class="cl">        <span class="str">&quot;petal_mid&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#023e8a&quot;</span><span class="op">,</span> <span class="str">&quot;#03045e&quot;</span><span class="op">,</span> <span class="str">&quot;#0077b6&quot;</span><span class="op">,</span> <span class="str">&quot;#1d3557&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">42</span><span class="cl">        <span class="str">&quot;petal_dark&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#050c1e&quot;</span><span class="op">,</span> <span class="str">&quot;#0b132b&quot;</span><span class="op">,</span> <span class="str">&quot;#1c2541&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">43</span><span class="cl">        <span class="str">&quot;core&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#e0fbfc&quot;</span><span class="op">,</span> <span class="str">&quot;#caf0f8&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">44</span><span class="cl">        <span class="str">&quot;sepal&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#1b4332&quot;</span><span class="op">,</span> <span class="str">&quot;#2d6a4f&quot;</span><span class="op">,</span> <span class="str">&quot;#40916c&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">45</span><span class="cl">        <span class="str">&quot;stem&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#081c15&quot;</span><span class="op">,</span> <span class="str">&quot;#1b4332&quot;</span><span class="op">,</span> <span class="str">&quot;#133c2a&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">46</span><span class="cl">        <span class="str">&quot;cube&quot;</span><span class="op">:</span> <span class="str">&quot;#3a6073&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">47</span><span class="cl">        <span class="str">&quot;bg&quot;</span><span class="op">:</span> <span class="str">&quot;#060913&quot;</span>
+</span></div>
+<div class="line"><span class="ln">48</span><span class="cl">    <span class="op">}</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">49</span><span class="cl">    <span class="str">&quot;golden_amber&quot;</span><span class="op">:</span> <span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">50</span><span class="cl">        <span class="str">&quot;name&quot;</span><span class="op">:</span> <span class="str">&quot;Champagne Gold (Luminous Amber)&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">51</span><span class="cl">        <span class="str">&quot;edge&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#fef9e7&quot;</span><span class="op">,</span> <span class="str">&quot;#fcf3cf&quot;</span><span class="op">,</span> <span class="str">&quot;#f9e79f&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">52</span><span class="cl">        <span class="str">&quot;petal_high&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#f1c40f&quot;</span><span class="op">,</span> <span class="str">&quot;#f39c12&quot;</span><span class="op">,</span> <span class="str">&quot;#f5b041&quot;</span><span class="op">,</span> <span class="str">&quot;#f8c471&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">53</span><span class="cl">        <span class="str">&quot;petal_mid&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#d4ac0d&quot;</span><span class="op">,</span> <span class="str">&quot;#b7950b&quot;</span><span class="op">,</span> <span class="str">&quot;#d68910&quot;</span><span class="op">,</span> <span class="str">&quot;#ba4a00&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">54</span><span class="cl">        <span class="str">&quot;petal_dark&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#784212&quot;</span><span class="op">,</span> <span class="str">&quot;#6e2c00&quot;</span><span class="op">,</span> <span class="str">&quot;#4d2800&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">55</span><span class="cl">        <span class="str">&quot;core&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#fef9e7&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">56</span><span class="cl">        <span class="str">&quot;sepal&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#33691e&quot;</span><span class="op">,</span> <span class="str">&quot;#558b2f&quot;</span><span class="op">,</span> <span class="str">&quot;#2e7d32&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">57</span><span class="cl">        <span class="str">&quot;stem&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#1b5e20&quot;</span><span class="op">,</span> <span class="str">&quot;#2e7d32&quot;</span><span class="op">,</span> <span class="str">&quot;#194d1c&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">58</span><span class="cl">        <span class="str">&quot;cube&quot;</span><span class="op">:</span> <span class="str">&quot;#6e5d38&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">59</span><span class="cl">        <span class="str">&quot;bg&quot;</span><span class="op">:</span> <span class="str">&quot;#0d0c07&quot;</span>
+</span></div>
+<div class="line"><span class="ln">60</span><span class="cl">    <span class="op">}</span>
+</span></div>
+<div class="line"><span class="ln">61</span><span class="cl"><span class="op">}</span>
+</span></div>
+<div class="line"><span class="ln">62</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">63</span><span class="cl"><span class="var">current_theme</span> <span class="op">=</span> <span class="str">&quot;ruby_rose&quot;</span>
+</span></div>
+<div class="line"><span class="ln">64</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">65</span><span class="cl"><span class="cm"># ==================== 2. Mathematical 3D Rose Surface Point Cloud ====================</span>
+</span></div>
+<div class="line"><span class="ln">66</span><span class="cl"><span class="kw">def</span> <span class="fn">generate_perfect_rose</span><span class="op">(</span><span class="var">total_points</span><span class="op">=</span><span class="num">4600</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">67</span><span class="cl">    <span class="str">&quot;&quot;&quot;
+    Authentic 3D parametric rose surface equations
+    Precise calculation of spiral petals, ruffled rims, sepals and stem
+    &quot;&quot;&quot;</span></span></div>
+<div class="line"><span class="ln">68</span><span class="cl">&nbsp;</span></div>
+<div class="line"><span class="ln">69</span><span class="cl">&nbsp;</span></div>
+<div class="line"><span class="ln">70</span><span class="cl">       
+</span></div>
+<div class="line"><span class="ln">71</span><span class="cl">    <span class="var">pal</span> <span class="op">=</span> <span class="var">PALETTES</span><span class="op">[</span><span class="var">current_theme</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">72</span><span class="cl">    <span class="var">particles</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">73</span><span class="cl">    
+</span></div>
+<div class="line"><span class="ln">74</span><span class="cl">    <span class="cm"># 1. Core petal surface sampling (~72% particles)</span>
+</span></div>
+<div class="line"><span class="ln">75</span><span class="cl">    <span class="var">petal_points</span> <span class="op">=</span> <span class="bi">int</span><span class="op">(</span><span class="var">total_points</span> <span class="op">*</span> <span class="num">0.72</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">76</span><span class="cl">    <span class="kw">for</span> <span class="var">_</span> <span class="kw">in</span> <span class="bi">range</span><span class="op">(</span><span class="var">petal_points</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">77</span><span class="cl">        <span class="cm"># t controls spiral turns & angle: from inner bud to outer flare</span>
+</span></div>
+<div class="line"><span class="ln">78</span><span class="cl">        <span class="var">t_norm</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="num">1</span><span class="op">)</span> <span class="op">**</span> <span class="num">0.85</span>
+</span></div>
+<div class="line"><span class="ln">79</span><span class="cl">        <span class="var">t</span> <span class="op">=</span> <span class="var">t_norm</span> <span class="op">*</span> <span class="op">(</span><span class="num">20.0</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span><span class="op">)</span> <span class="op">+</span> <span class="num">3.8</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span>
+</span></div>
+<div class="line"><span class="ln">80</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">81</span><span class="cl">        <span class="cm"># p controls petal vertical-to-curved pitch inclination</span>
+</span></div>
+<div class="line"><span class="ln">82</span><span class="cl">        <span class="var">p</span> <span class="op">=</span> <span class="op">(</span><span class="bi">math</span><span class="op">.</span><span class="var">pi</span> <span class="op">/</span> <span class="num">2.0</span><span class="op">)</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">exp</span><span class="op">(</span><span class="op">-</span><span class="var">t</span> <span class="op">/</span> <span class="op">(</span><span class="num">8.0</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">83</span><span class="cl">        <span class="cm"># Petal rim ripple perturbation</span>
+</span></div>
+<div class="line"><span class="ln">84</span><span class="cl">        <span class="var">ripple</span> <span class="op">=</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="num">15.0</span> <span class="op">*</span> <span class="var">t</span><span class="op">)</span> <span class="op">/</span> <span class="num">140.0</span>
+</span></div>
+<div class="line"><span class="ln">85</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">86</span><span class="cl">        <span class="cm"># ~3.4 petals per ring, modulo arithmetic creates organic overlap</span>
+</span></div>
+<div class="line"><span class="ln">87</span><span class="cl">        <span class="var">mod_t</span> <span class="op">=</span> <span class="op">(</span><span class="num">3.4</span> <span class="op">*</span> <span class="var">t</span><span class="op">)</span> <span class="op">%</span> <span class="op">(</span><span class="num">2.0</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">88</span><span class="cl">        <span class="var">u_factor</span> <span class="op">=</span> <span class="num">1.0</span> <span class="op">-</span> <span class="op">(</span><span class="op">(</span><span class="num">1.0</span> <span class="op">-</span> <span class="var">mod_t</span> <span class="op">/</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span><span class="op">)</span> <span class="op">**</span> <span class="num">4</span><span class="op">)</span> <span class="op">/</span> <span class="num">2.0</span> <span class="op">+</span> <span class="var">ripple</span>
+</span></div>
+<div class="line"><span class="ln">89</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">90</span><span class="cl">        <span class="cm"># x is radial position: 0 for petal base, 1 for outer rim</span>
+</span></div>
+<div class="line"><span class="ln">91</span><span class="cl">        <span class="cm"># Boost rim density for razor-sharp petal silhouettes</span>
+</span></div>
+<div class="line"><span class="ln">92</span><span class="cl">        <span class="kw">if</span> <span class="bi">random</span><span class="op">.</span><span class="bi">random</span><span class="op">(</span><span class="op">)</span> <span class="op">&lt;</span><span class="num">0.35</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">93</span><span class="cl">            <span class="var">x</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0.85</span><span class="op">,</span> <span class="num">1.0</span><span class="op">)</span>  <span class="cm"># Enhance edge contours</span>
+</span></div>
+<div class="line"><span class="ln">94</span><span class="cl">            <span class="var">is_edge</span> <span class="op">=</span> <span class="kw">True</span>
+</span></div>
+<div class="line"><span class="ln">95</span><span class="cl">        <span class="kw">else</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">96</span><span class="cl">            <span class="var">x</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0.08</span><span class="op">,</span> <span class="num">0.95</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">97</span><span class="cl">            <span class="var">is_edge</span> <span class="op">=</span> <span class="kw">False</span>
+</span></div>
+<div class="line"><span class="ln">98</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">99</span><span class="cl">        <span class="cm"># y profile forms the cupped petal contour curve</span>
+</span></div>
+<div class="line"><span class="ln">100</span><span class="cl">        <span class="var">y_prof</span> <span class="op">=</span> <span class="num">2.0</span> <span class="op">*</span> <span class="op">(</span><span class="var">x</span><span class="op">**</span><span class="num">2</span> <span class="op">-</span> <span class="var">x</span><span class="op">)</span> <span class="op">**</span> <span class="num">2</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">p</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">101</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">102</span><span class="cl">        <span class="var">r</span> <span class="op">=</span> <span class="var">u_factor</span> <span class="op">*</span> <span class="op">(</span><span class="var">x</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">p</span><span class="op">)</span> <span class="op">+</span> <span class="var">y_prof</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">p</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">103</span><span class="cl">        <span class="var">h</span> <span class="op">=</span> <span class="var">u_factor</span> <span class="op">*</span> <span class="op">(</span><span class="var">x</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">p</span><span class="op">)</span> <span class="op">-</span> <span class="var">y_prof</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">p</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">104</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">105</span><span class="cl">        <span class="var">scale</span> <span class="op">=</span> <span class="num">138.0</span>
+</span></div>
+<div class="line"><span class="ln">106</span><span class="cl">        <span class="cm"># 3D coordinate transform (Y up, X/Z radial)</span>
+</span></div>
+<div class="line"><span class="ln">107</span><span class="cl">        <span class="var">base_x</span> <span class="op">=</span> <span class="var">r</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">t</span><span class="op">)</span> <span class="op">*</span> <span class="var">scale</span>
+</span></div>
+<div class="line"><span class="ln">108</span><span class="cl">        <span class="var">base_z</span> <span class="op">=</span> <span class="var">r</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">t</span><span class="op">)</span> <span class="op">*</span> <span class="var">scale</span>
+</span></div>
+<div class="line"><span class="ln">109</span><span class="cl">        <span class="var">base_y</span> <span class="op">=</span> <span class="op">(</span><span class="var">h</span> <span class="op">*</span> <span class="var">scale</span><span class="op">)</span> <span class="op">-</span> <span class="num">20.0</span>
+</span></div>
+<div class="line"><span class="ln">110</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">111</span><span class="cl">        <span class="cm"># Compute color mapping</span>
+</span></div>
+<div class="line"><span class="ln">112</span><span class="cl">        <span class="var">dist_c</span> <span class="op">=</span> <span class="bi">math</span><span class="op">.</span><span class="var">sqrt</span><span class="op">(</span><span class="var">base_x</span><span class="op">**</span><span class="num">2</span> <span class="op">+</span> <span class="var">base_z</span><span class="op">**</span><span class="num">2</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">113</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">114</span><span class="cl">        <span class="kw">if</span> <span class="var">is_edge</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">115</span><span class="cl">            <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;edge&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">116</span><span class="cl">            <span class="var">size</span> <span class="op">=</span> <span class="num">2</span> <span class="kw">if</span> <span class="bi">random</span><span class="op">.</span><span class="bi">random</span><span class="op">(</span><span class="op">)</span> <span class="op">&lt;</span><span class="num">0.4</span> <span class="kw">else</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">117</span><span class="cl">        <span class="kw">elif</span> <span class="var">dist_c</span> <span class="op">&lt;</span><span class="num">24</span> <span class="kw">and</span> <span class="var">base_y</span> <span class="op">&gt;</span><span class="op">-</span><span class="num">10</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">118</span><span class="cl">            <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;core&quot;</span><span class="op">]</span><span class="op">)</span>  <span class="cm"># Golden stamen core</span>
+</span></div>
+<div class="line"><span class="ln">119</span><span class="cl">            <span class="var">size</span> <span class="op">=</span> <span class="num">2</span> <span class="kw">if</span> <span class="bi">random</span><span class="op">.</span><span class="bi">random</span><span class="op">(</span><span class="op">)</span> <span class="op">&lt;</span><span class="num">0.3</span> <span class="kw">else</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">120</span><span class="cl">        <span class="kw">elif</span> <span class="var">dist_c</span> <span class="op">&lt;</span><span class="num">65</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">121</span><span class="cl">            <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;petal_high&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">122</span><span class="cl">            <span class="var">size</span> <span class="op">=</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">123</span><span class="cl">        <span class="kw">elif</span> <span class="var">x</span> <span class="op">&lt;</span><span class="num">0.35</span> <span class="kw">or</span> <span class="var">base_y</span> <span class="op">&lt;</span><span class="op">-</span><span class="num">15</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">124</span><span class="cl">            <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;petal_dark&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">125</span><span class="cl">            <span class="var">size</span> <span class="op">=</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">126</span><span class="cl">        <span class="kw">else</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">127</span><span class="cl">            <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;petal_mid&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">128</span><span class="cl">            <span class="var">size</span> <span class="op">=</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">129</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">130</span><span class="cl">        <span class="var">particles</span><span class="op">.</span><span class="var">append</span><span class="op">(</span><span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">131</span><span class="cl">            <span class="str">&quot;x&quot;</span><span class="op">:</span> <span class="var">base_x</span><span class="op">,</span> <span class="str">&quot;y&quot;</span><span class="op">:</span> <span class="var">base_y</span><span class="op">,</span> <span class="str">&quot;z&quot;</span><span class="op">:</span> <span class="var">base_z</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">132</span><span class="cl">            <span class="str">&quot;col&quot;</span><span class="op">:</span> <span class="var">col</span><span class="op">,</span> <span class="str">&quot;size&quot;</span><span class="op">:</span> <span class="var">size</span><span class="op">,</span> <span class="str">&quot;part&quot;</span><span class="op">:</span> <span class="str">&quot;petal&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">133</span><span class="cl">            <span class="str">&quot;phase&quot;</span><span class="op">:</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span> <span class="op">*</span> <span class="num">2</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">134</span><span class="cl">        <span class="op">}</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">135</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">136</span><span class="cl">    <span class="cm"># 2. Calyx sepals and stem (~20% particles)</span>
+</span></div>
+<div class="line"><span class="ln">137</span><span class="cl">    <span class="var">stem_points</span> <span class="op">=</span> <span class="bi">int</span><span class="op">(</span><span class="var">total_points</span> <span class="op">*</span> <span class="num">0.20</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">138</span><span class="cl">    <span class="kw">for</span> <span class="var">_</span> <span class="kw">in</span> <span class="bi">range</span><span class="op">(</span><span class="var">stem_points</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">139</span><span class="cl">        <span class="var">v</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="num">1</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">140</span><span class="cl">        <span class="var">theta</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="num">2</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">141</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">142</span><span class="cl">        <span class="kw">if</span> <span class="var">v</span> <span class="op">&lt;</span><span class="num">0.35</span><span class="op">:</span>  <span class="cm"># Sepals (5 organic calyx leaves hugging flower base)</span>
+</span></div>
+<div class="line"><span class="ln">143</span><span class="cl">            <span class="var">leaf_angle</span> <span class="op">=</span> <span class="var">theta</span> <span class="op">*</span> <span class="num">5.0</span>
+</span></div>
+<div class="line"><span class="ln">144</span><span class="cl">            <span class="var">r_sepal</span> <span class="op">=</span> <span class="op">(</span><span class="num">1.0</span> <span class="op">-</span> <span class="var">v</span> <span class="op">/</span> <span class="num">0.35</span><span class="op">)</span> <span class="op">*</span> <span class="num">55.0</span> <span class="op">*</span> <span class="op">(</span><span class="var">abs</span><span class="op">(</span><span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">leaf_angle</span><span class="op">)</span><span class="op">)</span> <span class="op">**</span> <span class="num">0.6</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">145</span><span class="cl">            <span class="var">base_x</span> <span class="op">=</span> <span class="var">r_sepal</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">theta</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">146</span><span class="cl">            <span class="var">base_z</span> <span class="op">=</span> <span class="var">r_sepal</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">theta</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">147</span><span class="cl">            <span class="var">base_y</span> <span class="op">=</span> <span class="op">-</span><span class="num">22.0</span> <span class="op">-</span> <span class="var">v</span> <span class="op">*</span> <span class="num">35.0</span>
+</span></div>
+<div class="line"><span class="ln">148</span><span class="cl">            <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;sepal&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">149</span><span class="cl">            <span class="var">size</span> <span class="op">=</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">150</span><span class="cl">        <span class="kw">else</span><span class="op">:</span>  <span class="cm"># Stem (organically curved floral stalk)</span>
+</span></div>
+<div class="line"><span class="ln">151</span><span class="cl">            <span class="var">t_stem</span> <span class="op">=</span> <span class="op">(</span><span class="var">v</span> <span class="op">-</span> <span class="num">0.35</span><span class="op">)</span> <span class="op">/</span> <span class="num">0.65</span>
+</span></div>
+<div class="line"><span class="ln">152</span><span class="cl">            <span class="var">r_stem</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">2.5</span><span class="op">,</span> <span class="num">6.0</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">153</span><span class="cl">            <span class="var">bend_x</span> <span class="op">=</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">t_stem</span> <span class="op">*</span> <span class="num">3.5</span><span class="op">)</span> <span class="op">*</span> <span class="num">10.0</span>
+</span></div>
+<div class="line"><span class="ln">154</span><span class="cl">            <span class="var">bend_z</span> <span class="op">=</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">t_stem</span> <span class="op">*</span> <span class="num">2.8</span><span class="op">)</span> <span class="op">*</span> <span class="num">6.0</span>
+</span></div>
+<div class="line"><span class="ln">155</span><span class="cl">            <span class="var">base_x</span> <span class="op">=</span> <span class="var">r_stem</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">theta</span><span class="op">)</span> <span class="op">+</span> <span class="var">bend_x</span>
+</span></div>
+<div class="line"><span class="ln">156</span><span class="cl">            <span class="var">base_z</span> <span class="op">=</span> <span class="var">r_stem</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">theta</span><span class="op">)</span> <span class="op">+</span> <span class="var">bend_z</span>
+</span></div>
+<div class="line"><span class="ln">157</span><span class="cl">            <span class="var">base_y</span> <span class="op">=</span> <span class="op">-</span><span class="num">35.0</span> <span class="op">-</span> <span class="var">t_stem</span> <span class="op">*</span> <span class="num">95.0</span>
+</span></div>
+<div class="line"><span class="ln">158</span><span class="cl">            <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;stem&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">159</span><span class="cl">            <span class="var">size</span> <span class="op">=</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">160</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">161</span><span class="cl">        <span class="var">particles</span><span class="op">.</span><span class="var">append</span><span class="op">(</span><span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">162</span><span class="cl">            <span class="str">&quot;x&quot;</span><span class="op">:</span> <span class="var">base_x</span><span class="op">,</span> <span class="str">&quot;y&quot;</span><span class="op">:</span> <span class="var">base_y</span><span class="op">,</span> <span class="str">&quot;z&quot;</span><span class="op">:</span> <span class="var">base_z</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">163</span><span class="cl">            <span class="str">&quot;col&quot;</span><span class="op">:</span> <span class="var">col</span><span class="op">,</span> <span class="str">&quot;size&quot;</span><span class="op">:</span> <span class="var">size</span><span class="op">,</span> <span class="str">&quot;part&quot;</span><span class="op">:</span> <span class="str">&quot;stem&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">164</span><span class="cl">            <span class="str">&quot;phase&quot;</span><span class="op">:</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span> <span class="op">*</span> <span class="num">2</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">165</span><span class="cl">        <span class="op">}</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">166</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">167</span><span class="cl">    <span class="cm"># 3. Ambient stardust & luminous particles (~8% particles)</span>
+</span></div>
+<div class="line"><span class="ln">168</span><span class="cl">    <span class="var">ember_points</span> <span class="op">=</span> <span class="bi">int</span><span class="op">(</span><span class="var">total_points</span> <span class="op">*</span> <span class="num">0.08</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">169</span><span class="cl">    <span class="kw">for</span> <span class="var">_</span> <span class="kw">in</span> <span class="bi">range</span><span class="op">(</span><span class="var">ember_points</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">170</span><span class="cl">        <span class="var">rx</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="var">CUBE_SIZE</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">171</span><span class="cl">        <span class="var">ry</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="var">CUBE_SIZE</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">172</span><span class="cl">        <span class="var">rz</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="var">CUBE_SIZE</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">173</span><span class="cl">        <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;edge&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">174</span><span class="cl">        <span class="var">particles</span><span class="op">.</span><span class="var">append</span><span class="op">(</span><span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">175</span><span class="cl">            <span class="str">&quot;x&quot;</span><span class="op">:</span> <span class="var">rx</span><span class="op">,</span> <span class="str">&quot;y&quot;</span><span class="op">:</span> <span class="var">ry</span><span class="op">,</span> <span class="str">&quot;z&quot;</span><span class="op">:</span> <span class="var">rz</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">176</span><span class="cl">            <span class="str">&quot;col&quot;</span><span class="op">:</span> <span class="var">col</span><span class="op">,</span> <span class="str">&quot;size&quot;</span><span class="op">:</span> <span class="num">1</span><span class="op">,</span> <span class="str">&quot;part&quot;</span><span class="op">:</span> <span class="str">&quot;ember&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">177</span><span class="cl">            <span class="str">&quot;phase&quot;</span><span class="op">:</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span> <span class="op">*</span> <span class="num">2</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">178</span><span class="cl">        <span class="op">}</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">179</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">180</span><span class="cl">    <span class="kw">return</span> <span class="var">particles</span>
+</span></div>
+<div class="line"><span class="ln">181</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">182</span><span class="cl"><span class="cm"># 3D wireframe bounding box</span>
+</span></div>
+<div class="line"><span class="ln">183</span><span class="cl"><span class="var">CUBE_VERTICES</span> <span class="op">=</span> <span class="op">[</span>
+</span></div>
+<div class="line"><span class="ln">184</span><span class="cl">    <span class="op">[</span><span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">185</span><span class="cl">    <span class="op">[</span> <span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">186</span><span class="cl">    <span class="op">[</span> <span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">187</span><span class="cl">    <span class="op">[</span><span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">188</span><span class="cl">    <span class="op">[</span><span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">189</span><span class="cl">    <span class="op">[</span> <span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">190</span><span class="cl">    <span class="op">[</span> <span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">191</span><span class="cl">    <span class="op">[</span><span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">192</span><span class="cl"><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">193</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">194</span><span class="cl"><span class="var">CUBE_EDGES</span> <span class="op">=</span> <span class="op">[</span>
+</span></div>
+<div class="line"><span class="ln">195</span><span class="cl">    <span class="op">(</span><span class="num">0</span><span class="op">,</span><span class="num">1</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">1</span><span class="op">,</span><span class="num">2</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">2</span><span class="op">,</span><span class="num">3</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">3</span><span class="op">,</span><span class="num">0</span><span class="op">)</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">196</span><span class="cl">    <span class="op">(</span><span class="num">4</span><span class="op">,</span><span class="num">5</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">5</span><span class="op">,</span><span class="num">6</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">6</span><span class="op">,</span><span class="num">7</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">7</span><span class="op">,</span><span class="num">4</span><span class="op">)</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">197</span><span class="cl">    <span class="op">(</span><span class="num">0</span><span class="op">,</span><span class="num">4</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">1</span><span class="op">,</span><span class="num">5</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">2</span><span class="op">,</span><span class="num">6</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">3</span><span class="op">,</span><span class="num">7</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">198</span><span class="cl"><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">199</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">200</span><span class="cl"><span class="cm"># ==================== 3. Application Window & Real-time Render ====================</span>
+</span></div>
+<div class="line"><span class="ln">201</span><span class="cl"><span class="kw">class</span> <span class="cls">PerfectRoseApp</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">202</span><span class="cl">    <span class="kw">def</span> <span class="fn">__init__</span><span class="op">(</span><span class="self">self</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">203</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span> <span class="op">=</span> <span class="var">tk</span><span class="op">.</span><span class="var">Tk</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">204</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">title</span><span class="op">(</span><span class="str">&quot;3D Mathematical Rose · Cosmic Bloom 3D&quot;</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">205</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">geometry</span><span class="op">(</span>f&quot;<span class="op">{</span><span class="var">WIDTH</span><span class="op">}</span>x<span class="op">{</span><span class="var">HEIGHT</span><span class="op">}</span>&quot;<span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">206</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">207</span><span class="cl">        <span class="var">pal</span> <span class="op">=</span> <span class="var">PALETTES</span><span class="op">[</span><span class="var">current_theme</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">208</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">configure</span><span class="op">(</span><span class="var">bg</span><span class="op">=</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;bg&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">209</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">210</span><span class="cl">        <span class="cm"># Keep window focused on launch</span>
+</span></div>
+<div class="line"><span class="ln">211</span><span class="cl">        <span class="kw">try</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">212</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">lift</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">213</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">attributes</span><span class="op">(</span><span class="str">&quot;-topmost&quot;</span><span class="op">,</span> <span class="kw">True</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">214</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">after</span><span class="op">(</span><span class="num">600</span><span class="op">,</span> <span class="kw">lambda</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">attributes</span><span class="op">(</span><span class="str">&quot;-topmost&quot;</span><span class="op">,</span> <span class="kw">False</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">215</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">focus_force</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">216</span><span class="cl">        <span class="kw">except</span> <span class="var">Exception</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">217</span><span class="cl">            <span class="kw">pass</span>
+</span></div>
+<div class="line"><span class="ln">218</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">219</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span> <span class="op">=</span> <span class="var">tk</span><span class="op">.</span><span class="var">Canvas</span><span class="op">(</span><span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">,</span> <span class="var">width</span><span class="op">=</span><span class="var">WIDTH</span><span class="op">,</span> <span class="var">height</span><span class="op">=</span><span class="var">HEIGHT</span><span class="op">,</span> <span class="var">bg</span><span class="op">=</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;bg&quot;</span><span class="op">]</span><span class="op">,</span> <span class="var">highlightthickness</span><span class="op">=</span><span class="num">0</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">220</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">pack</span><span class="op">(</span><span class="var">fill</span><span class="op">=</span><span class="var">tk</span><span class="op">.</span><span class="var">BOTH</span><span class="op">,</span> <span class="var">expand</span><span class="op">=</span><span class="kw">True</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">221</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">222</span><span class="cl">        <span class="cm"># 3D camera state</span>
+</span></div>
+<div class="line"><span class="ln">223</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">rot_x</span> <span class="op">=</span> <span class="num">0.45</span>    <span class="cm"># Elevated pitch angle for optimal petal curvature display</span>
+</span></div>
+<div class="line"><span class="ln">224</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">rot_y</span> <span class="op">=</span> <span class="num">0.50</span>    <span class="cm"># Azimuth rotation angle</span>
+</span></div>
+<div class="line"><span class="ln">225</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">zoom</span> <span class="op">=</span> <span class="num">1.05</span>
+</span></div>
+<div class="line"><span class="ln">226</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">auto_rotate</span> <span class="op">=</span> <span class="kw">True</span>
+</span></div>
+<div class="line"><span class="ln">227</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">show_code</span> <span class="op">=</span> <span class="kw">True</span>
+</span></div>
+<div class="line"><span class="ln">228</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">is_running</span> <span class="op">=</span> <span class="kw">True</span>
+</span></div>
+<div class="line"><span class="ln">229</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">230</span><span class="cl">        <span class="cm"># Mouse drag handlers</span>
+</span></div>
+<div class="line"><span class="ln">231</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">last_mx</span> <span class="op">=</span> <span class="num">0</span>
+</span></div>
+<div class="line"><span class="ln">232</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">last_my</span> <span class="op">=</span> <span class="num">0</span>
+</span></div>
+<div class="line"><span class="ln">233</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">is_dragging</span> <span class="op">=</span> <span class="kw">False</span>
+</span></div>
+<div class="line"><span class="ln">234</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">235</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;ButtonPress-1&gt;&quot;</span><span class="op">,</span> <span class="self">self</span><span class="op">.</span><span class="var">on_mouse_down</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">236</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;B1-Motion&gt;&quot;</span><span class="op">,</span> <span class="self">self</span><span class="op">.</span><span class="var">on_mouse_drag</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">237</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;ButtonRelease-1&gt;&quot;</span><span class="op">,</span> <span class="self">self</span><span class="op">.</span><span class="var">on_mouse_up</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">238</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;space&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">toggle_rotate</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">239</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;c&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">switch_theme</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">240</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;C&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">switch_theme</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">241</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;t&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">toggle_code</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">242</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;T&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">toggle_code</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">243</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;plus&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">adjust_zoom</span><span class="op">(</span><span class="num">0.08</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">244</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;equal&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">adjust_zoom</span><span class="op">(</span><span class="num">0.08</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">245</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;minus&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">adjust_zoom</span><span class="op">(</span><span class="op">-</span><span class="num">0.08</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">246</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">protocol</span><span class="op">(</span><span class="str">&quot;WM_DELETE_WINDOW&quot;</span><span class="op">,</span> <span class="self">self</span><span class="op">.</span><span class="var">on_close</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">247</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">248</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">particles</span> <span class="op">=</span> <span class="var">generate_perfect_rose</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">249</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">start_time</span> <span class="op">=</span> <span class="bi">time</span><span class="op">.</span><span class="bi">time</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">250</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">251</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">render_loop</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">252</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">253</span><span class="cl">    <span class="kw">def</span> <span class="fn">adjust_zoom</span><span class="op">(</span><span class="self">self</span><span class="op">,</span> <span class="var">delta</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">254</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">zoom</span> <span class="op">=</span> <span class="var">max</span><span class="op">(</span><span class="num">0.5</span><span class="op">,</span> <span class="var">min</span><span class="op">(</span><span class="num">2.5</span><span class="op">,</span> <span class="self">self</span><span class="op">.</span><span class="var">zoom</span> <span class="op">+</span> <span class="var">delta</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">255</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">256</span><span class="cl">    <span class="kw">def</span> <span class="fn">on_mouse_down</span><span class="op">(</span><span class="self">self</span><span class="op">,</span> <span class="var">event</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">257</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">is_dragging</span> <span class="op">=</span> <span class="kw">True</span>
+</span></div>
+<div class="line"><span class="ln">258</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">last_mx</span> <span class="op">=</span> <span class="var">event</span><span class="op">.</span><span class="var">x</span>
+</span></div>
+<div class="line"><span class="ln">259</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">last_my</span> <span class="op">=</span> <span class="var">event</span><span class="op">.</span><span class="var">y</span>
+</span></div>
+<div class="line"><span class="ln">260</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">261</span><span class="cl">    <span class="kw">def</span> <span class="fn">on_mouse_drag</span><span class="op">(</span><span class="self">self</span><span class="op">,</span> <span class="var">event</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">262</span><span class="cl">        <span class="kw">if</span> <span class="self">self</span><span class="op">.</span><span class="var">is_dragging</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">263</span><span class="cl">            <span class="var">dx</span> <span class="op">=</span> <span class="var">event</span><span class="op">.</span><span class="var">x</span> <span class="op">-</span> <span class="self">self</span><span class="op">.</span><span class="var">last_mx</span>
+</span></div>
+<div class="line"><span class="ln">264</span><span class="cl">            <span class="var">dy</span> <span class="op">=</span> <span class="var">event</span><span class="op">.</span><span class="var">y</span> <span class="op">-</span> <span class="self">self</span><span class="op">.</span><span class="var">last_my</span>
+</span></div>
+<div class="line"><span class="ln">265</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">rot_y</span> <span class="op">+=</span> <span class="var">dx</span> <span class="op">*</span> <span class="num">0.008</span>
+</span></div>
+<div class="line"><span class="ln">266</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">rot_x</span> <span class="op">-=</span> <span class="var">dy</span> <span class="op">*</span> <span class="num">0.008</span>
+</span></div>
+<div class="line"><span class="ln">267</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">last_mx</span> <span class="op">=</span> <span class="var">event</span><span class="op">.</span><span class="var">x</span>
+</span></div>
+<div class="line"><span class="ln">268</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">last_my</span> <span class="op">=</span> <span class="var">event</span><span class="op">.</span><span class="var">y</span>
+</span></div>
+<div class="line"><span class="ln">269</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">270</span><span class="cl">    <span class="kw">def</span> <span class="fn">on_mouse_up</span><span class="op">(</span><span class="self">self</span><span class="op">,</span> <span class="var">event</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">271</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">is_dragging</span> <span class="op">=</span> <span class="kw">False</span>
+</span></div>
+<div class="line"><span class="ln">272</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">273</span><span class="cl">    <span class="kw">def</span> <span class="fn">toggle_rotate</span><span class="op">(</span><span class="self">self</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">274</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">auto_rotate</span> <span class="op">=</span> <span class="kw">not</span> <span class="self">self</span><span class="op">.</span><span class="var">auto_rotate</span>
+</span></div>
+<div class="line"><span class="ln">275</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">276</span><span class="cl">    <span class="kw">def</span> <span class="fn">toggle_code</span><span class="op">(</span><span class="self">self</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">277</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">show_code</span> <span class="op">=</span> <span class="kw">not</span> <span class="self">self</span><span class="op">.</span><span class="var">show_code</span>
+</span></div>
+<div class="line"><span class="ln">278</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">279</span><span class="cl">    <span class="kw">def</span> <span class="fn">switch_theme</span><span class="op">(</span><span class="self">self</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">280</span><span class="cl">        <span class="kw">global</span> <span class="var">current_theme</span>
+</span></div>
+<div class="line"><span class="ln">281</span><span class="cl">        <span class="var">keys</span> <span class="op">=</span> <span class="var">list</span><span class="op">(</span><span class="var">PALETTES</span><span class="op">.</span><span class="var">keys</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">282</span><span class="cl">        <span class="var">idx</span> <span class="op">=</span> <span class="op">(</span><span class="var">keys</span><span class="op">.</span><span class="var">index</span><span class="op">(</span><span class="var">current_theme</span><span class="op">)</span> <span class="op">+</span> <span class="num">1</span><span class="op">)</span> <span class="op">%</span> <span class="bi">len</span><span class="op">(</span><span class="var">keys</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">283</span><span class="cl">        <span class="var">current_theme</span> <span class="op">=</span> <span class="var">keys</span><span class="op">[</span><span class="var">idx</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">284</span><span class="cl">        <span class="var">pal</span> <span class="op">=</span> <span class="var">PALETTES</span><span class="op">[</span><span class="var">current_theme</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">285</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">configure</span><span class="op">(</span><span class="var">bg</span><span class="op">=</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;bg&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">286</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">configure</span><span class="op">(</span><span class="var">bg</span><span class="op">=</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;bg&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">287</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">particles</span> <span class="op">=</span> <span class="var">generate_perfect_rose</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">288</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">289</span><span class="cl">    <span class="kw">def</span> <span class="fn">on_close</span><span class="op">(</span><span class="self">self</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">290</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">is_running</span> <span class="op">=</span> <span class="kw">False</span>
+</span></div>
+<div class="line"><span class="ln">291</span><span class="cl">        <span class="kw">try</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">292</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">destroy</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">293</span><span class="cl">        <span class="kw">except</span> <span class="var">Exception</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">294</span><span class="cl">            <span class="kw">pass</span>
+</span></div>
+<div class="line"><span class="ln">295</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">296</span><span class="cl">    <span class="kw">def</span> <span class="fn">project_3d</span><span class="op">(</span><span class="self">self</span><span class="op">,</span> <span class="var">x</span><span class="op">,</span> <span class="var">y</span><span class="op">,</span> <span class="var">z</span><span class="op">,</span> <span class="var">cx</span><span class="op">,</span> <span class="var">cy</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">297</span><span class="cl">        <span class="str">&quot;&quot;&quot;3D 3D to 2D perspective projection transform&quot;&quot;&quot;</span>
+</span></div>
+<div class="line"><span class="ln">298</span><span class="cl">        <span class="var">cos_x</span><span class="op">,</span> <span class="var">sin_x</span> <span class="op">=</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="self">self</span><span class="op">.</span><span class="var">rot_x</span><span class="op">)</span><span class="op">,</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="self">self</span><span class="op">.</span><span class="var">rot_x</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">299</span><span class="cl">        <span class="var">y1</span> <span class="op">=</span> <span class="var">y</span> <span class="op">*</span> <span class="var">cos_x</span> <span class="op">-</span> <span class="var">z</span> <span class="op">*</span> <span class="var">sin_x</span>
+</span></div>
+<div class="line"><span class="ln">300</span><span class="cl">        <span class="var">z1</span> <span class="op">=</span> <span class="var">y</span> <span class="op">*</span> <span class="var">sin_x</span> <span class="op">+</span> <span class="var">z</span> <span class="op">*</span> <span class="var">cos_x</span>
+</span></div>
+<div class="line"><span class="ln">301</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">302</span><span class="cl">        <span class="var">cos_y</span><span class="op">,</span> <span class="var">sin_y</span> <span class="op">=</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="self">self</span><span class="op">.</span><span class="var">rot_y</span><span class="op">)</span><span class="op">,</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="self">self</span><span class="op">.</span><span class="var">rot_y</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">303</span><span class="cl">        <span class="var">x2</span> <span class="op">=</span> <span class="var">x</span> <span class="op">*</span> <span class="var">cos_y</span> <span class="op">+</span> <span class="var">z1</span> <span class="op">*</span> <span class="var">sin_y</span>
+</span></div>
+<div class="line"><span class="ln">304</span><span class="cl">        <span class="var">z2</span> <span class="op">=</span> <span class="op">-</span><span class="var">x</span> <span class="op">*</span> <span class="var">sin_y</span> <span class="op">+</span> <span class="var">z1</span> <span class="op">*</span> <span class="var">cos_y</span>
+</span></div>
+<div class="line"><span class="ln">305</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">306</span><span class="cl">        <span class="var">cam_dist</span> <span class="op">=</span> <span class="num">450</span>
+</span></div>
+<div class="line"><span class="ln">307</span><span class="cl">        <span class="var">depth</span> <span class="op">=</span> <span class="var">z2</span> <span class="op">+</span> <span class="var">cam_dist</span>
+</span></div>
+<div class="line"><span class="ln">308</span><span class="cl">        <span class="kw">if</span> <span class="var">depth</span> <span class="op">&lt;=</span><span class="num">15</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">309</span><span class="cl">            <span class="var">depth</span> <span class="op">=</span> <span class="num">15</span>
+</span></div>
+<div class="line"><span class="ln">310</span><span class="cl">        <span class="var">factor</span> <span class="op">=</span> <span class="op">(</span><span class="var">FOV</span> <span class="op">*</span> <span class="self">self</span><span class="op">.</span><span class="var">zoom</span><span class="op">)</span> <span class="op">/</span> <span class="var">depth</span>
+</span></div>
+<div class="line"><span class="ln">311</span><span class="cl">        <span class="var">screen_x</span> <span class="op">=</span> <span class="var">cx</span> <span class="op">+</span> <span class="var">x2</span> <span class="op">*</span> <span class="var">factor</span>
+</span></div>
+<div class="line"><span class="ln">312</span><span class="cl">        <span class="var">screen_y</span> <span class="op">=</span> <span class="var">cy</span> <span class="op">-</span> <span class="var">y1</span> <span class="op">*</span> <span class="var">factor</span>
+</span></div>
+<div class="line"><span class="ln">313</span><span class="cl">        <span class="kw">return</span> <span class="var">screen_x</span><span class="op">,</span> <span class="var">screen_y</span><span class="op">,</span> <span class="var">z2</span>
+</span></div>
+<div class="line"><span class="ln">314</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">315</span><span class="cl">    <span class="kw">def</span> <span class="fn">draw_code_aesthetic</span><span class="op">(</span><span class="self">self</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">316</span><span class="cl">        <span class="str">&quot;&quot;&quot;Render cyberpunk source code stream in background&quot;&quot;&quot;</span>
+</span></div>
+<div class="line"><span class="ln">317</span><span class="cl">        <span class="var">lines</span> <span class="op">=</span> <span class="op">[</span>
+</span></div>
+<div class="line"><span class="ln">318</span><span class="cl">            <span class="str">&quot;// Mathematical 3D Parametric Rose Surface&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">319</span><span class="cl">            <span class="str">&quot;const p = (PI / 2) * exp(-t / (8 * PI));&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">320</span><span class="cl">            <span class="str">&quot;const ripple = sin(15 * t) / 140.0;&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">321</span><span class="cl">            <span class="str">&quot;const u = 1 - pow(1 - (3.4 * t % 2PI)/PI, 4)/2 + ripple;&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">322</span><span class="cl">            <span class="str">&quot;const y_curl = 2 * pow(x*x - x, 2) * sin(p);&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">323</span><span class="cl">            <span class="str">&quot;const r = u * (x * sin(p) + y_curl * cos(p));&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">324</span><span class="cl">            <span class="str">&quot;const h = u * (x * cos(p) - y_curl * sin(p));&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">325</span><span class="cl">            <span class="str">&quot;&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">326</span><span class="cl">            <span class="str">&quot;function heartBeatPulse(time) {&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">327</span><span class="cl">            <span class="str">&quot;    const beat = sin(time * 2.8) * sqrt(abs(cos(time * 2.8)));&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">328</span><span class="cl">            <span class="str">&quot;    return 1.0 + 0.05 * beat;&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">329</span><span class="cl">            <span class="str">&quot;}&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">330</span><span class="cl">            <span class="str">&quot;&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">331</span><span class="cl">            <span class="str">&quot;// Render Status: 4,600 Volumetric Points&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">332</span><span class="cl">            <span class="str">&quot;// Geometric Curvature: Rose Spiral Fibonacci&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">333</span><span class="cl">            <span class="str">&quot;// Depth-Sort Painter&#x27;s Occlusion: Enabled&quot;</span>
+</span></div>
+<div class="line"><span class="ln">334</span><span class="cl">        <span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">335</span><span class="cl">        <span class="var">start_y</span> <span class="op">=</span> <span class="num">70</span>
+</span></div>
+<div class="line"><span class="ln">336</span><span class="cl">        <span class="kw">for</span> <span class="var">text</span> <span class="kw">in</span> <span class="var">lines</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">337</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">create_text</span><span class="op">(</span>
+</span></div>
+<div class="line"><span class="ln">338</span><span class="cl">                <span class="num">35</span><span class="op">,</span> <span class="var">start_y</span><span class="op">,</span> <span class="var">text</span><span class="op">=</span><span class="var">text</span><span class="op">,</span> <span class="var">anchor</span><span class="op">=</span><span class="str">&quot;w&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">339</span><span class="cl">                <span class="var">font</span><span class="op">=</span><span class="op">(</span><span class="str">&quot;Menlo&quot;</span><span class="op">,</span> <span class="num">11</span><span class="op">)</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">340</span><span class="cl">                <span class="var">fill</span><span class="op">=</span><span class="str">&quot;#1f2c3f&quot;</span>
+</span></div>
+<div class="line"><span class="ln">341</span><span class="cl">            <span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">342</span><span class="cl">            <span class="var">start_y</span> <span class="op">+=</span> <span class="num">24</span>
+</span></div>
+<div class="line"><span class="ln">343</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">344</span><span class="cl">    <span class="kw">def</span> <span class="fn">render_loop</span><span class="op">(</span><span class="self">self</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">345</span><span class="cl">        <span class="kw">if</span> <span class="kw">not</span> <span class="self">self</span><span class="op">.</span><span class="var">is_running</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">346</span><span class="cl">            <span class="kw">return</span>
+</span></div>
+<div class="line"><span class="ln">347</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">348</span><span class="cl">        <span class="var">t</span> <span class="op">=</span> <span class="bi">time</span><span class="op">.</span><span class="bi">time</span><span class="op">(</span><span class="op">)</span> <span class="op">-</span> <span class="self">self</span><span class="op">.</span><span class="var">start_time</span>
+</span></div>
+<div class="line"><span class="ln">349</span><span class="cl">        <span class="var">pal</span> <span class="op">=</span> <span class="var">PALETTES</span><span class="op">[</span><span class="var">current_theme</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">350</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">351</span><span class="cl">        <span class="kw">if</span> <span class="self">self</span><span class="op">.</span><span class="var">auto_rotate</span> <span class="kw">and</span> <span class="kw">not</span> <span class="self">self</span><span class="op">.</span><span class="var">is_dragging</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">352</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">rot_y</span> <span class="op">+=</span> <span class="num">0.011</span>
+</span></div>
+<div class="line"><span class="ln">353</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">rot_x</span> <span class="op">=</span> <span class="num">0.45</span> <span class="op">+</span> <span class="num">0.08</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">t</span> <span class="op">*</span> <span class="num">0.5</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">354</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">355</span><span class="cl">        <span class="cm"># Gentle harmonic breathing oscillation</span>
+</span></div>
+<div class="line"><span class="ln">356</span><span class="cl">        <span class="var">pulse</span> <span class="op">=</span> <span class="num">1.0</span> <span class="op">+</span> <span class="num">0.045</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">t</span> <span class="op">*</span> <span class="num">2.4</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="var">abs</span><span class="op">(</span><span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">t</span> <span class="op">*</span> <span class="num">2.4</span><span class="op">)</span><span class="op">)</span> <span class="op">**</span> <span class="num">0.5</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">357</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">358</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">delete</span><span class="op">(</span><span class="str">&quot;all&quot;</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">359</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">360</span><span class="cl">        <span class="cm"># 1. Code overlay</span>
+</span></div>
+<div class="line"><span class="ln">361</span><span class="cl">        <span class="kw">if</span> <span class="self">self</span><span class="op">.</span><span class="var">show_code</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">362</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">draw_code_aesthetic</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">363</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">364</span><span class="cl">        <span class="var">center_x</span> <span class="op">=</span> <span class="var">WIDTH</span> <span class="op">*</span> <span class="num">0.60</span>
+</span></div>
+<div class="line"><span class="ln">365</span><span class="cl">        <span class="var">center_y</span> <span class="op">=</span> <span class="var">HEIGHT</span> <span class="op">*</span> <span class="num">0.50</span>
+</span></div>
+<div class="line"><span class="ln">366</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">367</span><span class="cl">        <span class="cm"># 2. 3D bounding cube</span>
+</span></div>
+<div class="line"><span class="ln">368</span><span class="cl">        <span class="var">proj_cube</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">369</span><span class="cl">        <span class="kw">for</span> <span class="var">vx</span><span class="op">,</span> <span class="var">vy</span><span class="op">,</span> <span class="var">vz</span> <span class="kw">in</span> <span class="var">CUBE_VERTICES</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">370</span><span class="cl">            <span class="var">sx</span><span class="op">,</span> <span class="var">sy</span><span class="op">,</span> <span class="var">sz</span> <span class="op">=</span> <span class="self">self</span><span class="op">.</span><span class="var">project_3d</span><span class="op">(</span><span class="var">vx</span><span class="op">,</span> <span class="var">vy</span><span class="op">,</span> <span class="var">vz</span><span class="op">,</span> <span class="var">center_x</span><span class="op">,</span> <span class="var">center_y</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">371</span><span class="cl">            <span class="var">proj_cube</span><span class="op">.</span><span class="var">append</span><span class="op">(</span><span class="op">(</span><span class="var">sx</span><span class="op">,</span> <span class="var">sy</span><span class="op">,</span> <span class="var">sz</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">372</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">373</span><span class="cl">        <span class="kw">for</span> <span class="var">i</span><span class="op">,</span> <span class="var">j</span> <span class="kw">in</span> <span class="var">CUBE_EDGES</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">374</span><span class="cl">            <span class="var">x1</span><span class="op">,</span> <span class="var">y1</span><span class="op">,</span> <span class="var">z1</span> <span class="op">=</span> <span class="var">proj_cube</span><span class="op">[</span><span class="var">i</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">375</span><span class="cl">            <span class="var">x2</span><span class="op">,</span> <span class="var">y2</span><span class="op">,</span> <span class="var">z2</span> <span class="op">=</span> <span class="var">proj_cube</span><span class="op">[</span><span class="var">j</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">376</span><span class="cl">            <span class="var">avg_z</span> <span class="op">=</span> <span class="op">(</span><span class="var">z1</span> <span class="op">+</span> <span class="var">z2</span><span class="op">)</span> <span class="op">/</span> <span class="num">2</span>
+</span></div>
+<div class="line"><span class="ln">377</span><span class="cl">            <span class="var">edge_col</span> <span class="op">=</span> <span class="var">pal</span><span class="op">[</span><span class="str">&quot;cube&quot;</span><span class="op">]</span> <span class="kw">if</span> <span class="var">avg_z</span> <span class="op">&lt;</span><span class="num">0</span> <span class="kw">else</span> <span class="str">&quot;#1c2635&quot;</span>
+</span></div>
+<div class="line"><span class="ln">378</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">create_line</span><span class="op">(</span><span class="var">x1</span><span class="op">,</span> <span class="var">y1</span><span class="op">,</span> <span class="var">x2</span><span class="op">,</span> <span class="var">y2</span><span class="op">,</span> <span class="var">fill</span><span class="op">=</span><span class="var">edge_col</span><span class="op">,</span> <span class="var">width</span><span class="op">=</span><span class="num">1</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">379</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">380</span><span class="cl">        <span class="cm"># 3. Collect and sort depth buffer (Painter&#x27;s Algorithm for occlusion)</span>
+</span></div>
+<div class="line"><span class="ln">381</span><span class="cl">        <span class="var">render_queue</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">382</span><span class="cl">        <span class="kw">for</span> <span class="var">p</span> <span class="kw">in</span> <span class="self">self</span><span class="op">.</span><span class="var">particles</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">383</span><span class="cl">            <span class="kw">if</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;part&quot;</span><span class="op">]</span> <span class="op">==</span> <span class="str">&quot;petal&quot;</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">384</span><span class="cl">                <span class="var">wobble</span> <span class="op">=</span> <span class="num">1.0</span> <span class="op">+</span> <span class="num">0.02</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">t</span> <span class="op">*</span> <span class="num">3.0</span> <span class="op">+</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;phase&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">385</span><span class="cl">                <span class="var">px</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;x&quot;</span><span class="op">]</span> <span class="op">*</span> <span class="var">pulse</span> <span class="op">*</span> <span class="var">wobble</span>
+</span></div>
+<div class="line"><span class="ln">386</span><span class="cl">                <span class="var">py</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;y&quot;</span><span class="op">]</span> <span class="op">*</span> <span class="var">pulse</span> <span class="op">*</span> <span class="var">wobble</span>
+</span></div>
+<div class="line"><span class="ln">387</span><span class="cl">                <span class="var">pz</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;z&quot;</span><span class="op">]</span> <span class="op">*</span> <span class="var">pulse</span> <span class="op">*</span> <span class="var">wobble</span>
+</span></div>
+<div class="line"><span class="ln">388</span><span class="cl">            <span class="kw">elif</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;part&quot;</span><span class="op">]</span> <span class="op">==</span> <span class="str">&quot;stem&quot;</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">389</span><span class="cl">                <span class="var">px</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;x&quot;</span><span class="op">]</span> <span class="op">*</span> <span class="op">(</span><span class="num">1.0</span> <span class="op">+</span> <span class="num">0.015</span> <span class="op">*</span> <span class="var">pulse</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">390</span><span class="cl">                <span class="var">py</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;y&quot;</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">391</span><span class="cl">                <span class="var">pz</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;z&quot;</span><span class="op">]</span> <span class="op">*</span> <span class="op">(</span><span class="num">1.0</span> <span class="op">+</span> <span class="num">0.015</span> <span class="op">*</span> <span class="var">pulse</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">392</span><span class="cl">            <span class="kw">else</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">393</span><span class="cl">                <span class="var">px</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;x&quot;</span><span class="op">]</span> <span class="op">+</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">t</span> <span class="op">*</span> <span class="num">1.2</span> <span class="op">+</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;phase&quot;</span><span class="op">]</span><span class="op">)</span> <span class="op">*</span> <span class="num">5.0</span>
+</span></div>
+<div class="line"><span class="ln">394</span><span class="cl">                <span class="var">py</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;y&quot;</span><span class="op">]</span> <span class="op">+</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">t</span> <span class="op">*</span> <span class="num">1.2</span> <span class="op">+</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;phase&quot;</span><span class="op">]</span><span class="op">)</span> <span class="op">*</span> <span class="num">5.0</span>
+</span></div>
+<div class="line"><span class="ln">395</span><span class="cl">                <span class="var">pz</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;z&quot;</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">396</span><span class="cl">                
+</span></div>
+<div class="line"><span class="ln">397</span><span class="cl">            <span class="var">sx</span><span class="op">,</span> <span class="var">sy</span><span class="op">,</span> <span class="var">sz</span> <span class="op">=</span> <span class="self">self</span><span class="op">.</span><span class="var">project_3d</span><span class="op">(</span><span class="var">px</span><span class="op">,</span> <span class="var">py</span><span class="op">,</span> <span class="var">pz</span><span class="op">,</span> <span class="var">center_x</span><span class="op">,</span> <span class="var">center_y</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">398</span><span class="cl">            <span class="var">render_queue</span><span class="op">.</span><span class="var">append</span><span class="op">(</span><span class="op">(</span><span class="var">sz</span><span class="op">,</span> <span class="var">sx</span><span class="op">,</span> <span class="var">sy</span><span class="op">,</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;col&quot;</span><span class="op">]</span><span class="op">,</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;size&quot;</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">399</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">400</span><span class="cl">        <span class="cm"># Back-to-front rendering pass (Depth buffering)</span>
+</span></div>
+<div class="line"><span class="ln">401</span><span class="cl">        <span class="var">render_queue</span><span class="op">.</span><span class="var">sort</span><span class="op">(</span><span class="var">key</span><span class="op">=</span><span class="kw">lambda</span> <span class="var">item</span><span class="op">:</span> <span class="var">item</span><span class="op">[</span><span class="num">0</span><span class="op">]</span><span class="op">,</span> <span class="var">reverse</span><span class="op">=</span><span class="kw">True</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">402</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">403</span><span class="cl">        <span class="kw">for</span> <span class="var">sz</span><span class="op">,</span> <span class="var">sx</span><span class="op">,</span> <span class="var">sy</span><span class="op">,</span> <span class="var">col</span><span class="op">,</span> <span class="var">size</span> <span class="kw">in</span> <span class="var">render_queue</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">404</span><span class="cl">            <span class="kw">if</span> <span class="var">sz</span> <span class="op">&lt;</span><span class="op">-</span><span class="num">80</span> <span class="kw">and</span> <span class="var">size</span> <span class="op">&gt;</span><span class="num">1</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">405</span><span class="cl">                <span class="var">size</span> <span class="op">=</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">406</span><span class="cl">            <span class="kw">elif</span> <span class="var">sz</span> <span class="op">&gt;</span><span class="num">70</span> <span class="kw">and</span> <span class="var">size</span> <span class="op">==</span> <span class="num">1</span> <span class="kw">and</span> <span class="bi">random</span><span class="op">.</span><span class="bi">random</span><span class="op">(</span><span class="op">)</span> <span class="op">&lt;</span><span class="num">0.12</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">407</span><span class="cl">                <span class="var">size</span> <span class="op">=</span> <span class="num">2</span>
+</span></div>
+<div class="line"><span class="ln">408</span><span class="cl">                
+</span></div>
+<div class="line"><span class="ln">409</span><span class="cl">            <span class="kw">if</span> <span class="var">size</span> <span class="op">==</span> <span class="num">1</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">410</span><span class="cl">                <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">create_rectangle</span><span class="op">(</span><span class="var">sx</span><span class="op">,</span> <span class="var">sy</span><span class="op">,</span> <span class="var">sx</span><span class="op">+</span><span class="num">1</span><span class="op">,</span> <span class="var">sy</span><span class="op">+</span><span class="num">1</span><span class="op">,</span> <span class="var">outline</span><span class="op">=</span><span class="var">col</span><span class="op">,</span> <span class="var">fill</span><span class="op">=</span><span class="var">col</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">411</span><span class="cl">            <span class="kw">else</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">412</span><span class="cl">                <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">create_rectangle</span><span class="op">(</span><span class="var">sx</span><span class="op">-</span><span class="num">1</span><span class="op">,</span> <span class="var">sy</span><span class="op">-</span><span class="num">1</span><span class="op">,</span> <span class="var">sx</span><span class="op">+</span><span class="num">1</span><span class="op">,</span> <span class="var">sy</span><span class="op">+</span><span class="num">1</span><span class="op">,</span> <span class="var">outline</span><span class="op">=</span><span class="var">col</span><span class="op">,</span> <span class="var">fill</span><span class="op">=</span><span class="var">col</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">413</span><span class="cl">                
+</span></div>
+<div class="line"><span class="ln">414</span><span class="cl">        <span class="cm"># 4. HUD interactive status overlay</span>
+</span></div>
+<div class="line"><span class="ln">415</span><span class="cl">        <span class="var">info_text</span> <span class="op">=</span> f&quot;🌹 Theme: <span class="op">{</span><span class="var">pal</span><span class="op">[</span><span class="str">&#x27;name&#x27;</span><span class="op">]</span><span class="op">}</span> | [C] Theme | [Space] Spin | [+/-] Zoom | 🖱️ Drag to Rotate 360°&quot;
+</span></div>
+<div class="line"><span class="ln">416</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">create_text</span><span class="op">(</span>
+</span></div>
+<div class="line"><span class="ln">417</span><span class="cl">            <span class="var">WIDTH</span> <span class="op">//</span> <span class="num">2</span><span class="op">,</span> <span class="var">HEIGHT</span> <span class="op">-</span> <span class="num">22</span><span class="op">,</span> <span class="var">text</span><span class="op">=</span><span class="var">info_text</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">418</span><span class="cl">            <span class="var">fill</span><span class="op">=</span><span class="str">&quot;#5a6b82&quot;</span><span class="op">,</span> <span class="var">font</span><span class="op">=</span><span class="op">(</span><span class="str">&quot;Helvetica&quot;</span><span class="op">,</span> <span class="num">11</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">419</span><span class="cl">        <span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">420</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">421</span><span class="cl">        <span class="kw">try</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">422</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">after</span><span class="op">(</span><span class="num">16</span><span class="op">,</span> <span class="self">self</span><span class="op">.</span><span class="var">render_loop</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">423</span><span class="cl">        <span class="kw">except</span> <span class="var">Exception</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">424</span><span class="cl">            <span class="kw">pass</span>
+</span></div>
+<div class="line"><span class="ln">425</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">426</span><span class="cl"><span class="kw">if</span> <span class="var">__name__</span> <span class="op">==</span> <span class="str">&quot;__main__&quot;</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">427</span><span class="cl">    <span class="var">app</span> <span class="op">=</span> <span class="var">PerfectRoseApp</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">428</span><span class="cl">    <span class="var">app</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">mainloop</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">429</span><span class="cl">&nbsp;</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 3D Particle Canvas -->
+  <main id="stage">
+    <canvas id="canvas" aria-label="3D Procedural Particle Botanical Animation"></canvas>
+    <div id="error"></div>
+  </main>
+
+  <div id="hint">
+    PARTICLE BOTANICALS · 3D LAB
+    <small id="status-tag">🌹 Ruby Red · 💐 Rose Bouquet | Press C to Color · V to Flower</small>
+  </div>
+
+  <div id="ui">
+    <button id="fullscreen-btn" class="primary">⛶ Fullscreen</button>
+    <button id="theme-btn" class="highlight">🎨 Palette (C)</button>
+    <button id="style-btn" class="highlight">✨ Flower (V)</button>
+    <button id="play">Pause</button>
+    <button id="spin" class="active">Spin</button>
+    <button id="box" class="active">Wireframe</button>
+    <button id="code-btn" class="active">Code</button>
+    <button id="options">Params</button>
+    <button id="snapshot">Capture 4K</button>
+  </div>
+
+  <!-- 16 Diverse Themes Modal -->
+  <div class="popup-panel" id="theme-menu">
+    <div style="font-weight:600; font-size:13px; color:#fff; display:flex; justify-content:space-between; align-items:center;">
+      <span>🎨 Select Palette (16 Celestial Themes)</span>
+      <span style="font-size:11px; color:#888;">Hotkey: C</span>
+    </div>
+    <div class="theme-grid">
+      <div class="theme-item active" onclick="setTheme('ruby')">
+        <div class="theme-color-dot" style="background:#ff1744;"></div>
+        <div><strong>Ruby Red</strong><div style="font-size:10px; color:#8b949e;">Classic Passionate Crimson</div></div>
+      </div>
+      <div class="theme-item" onclick="setTheme('blue')">
+        <div class="theme-color-dot" style="background:#0096c7;"></div>
+        <div><strong>Sapphire Blue</strong><div style="font-size:10px; color:#8b949e;">Deep Oceanic Celestial Glow</div></div>
+      </div>
+      <div class="theme-item" onclick="setTheme('pink')">
+        <div class="theme-color-dot" style="background:#ff758f;"></div>
+        <div><strong>Pink Diamond</strong><div style="font-size:10px; color:#8b949e;">Tender Sakura Peach Pastel</div></div>
+      </div>
+      <div class="theme-item" onclick="setTheme('gold')">
+        <div class="theme-color-dot" style="background:#f1c40f;"></div>
+        <div><strong>Champagne Gold</strong><div style="font-size:10px; color:#8b949e;">Radiant Amber Luxury Aura</div></div>
+      </div>
+      <div class="theme-item" onclick="setTheme('purple')">
+        <div class="theme-color-dot" style="background:#b5179e;"></div>
+        <div><strong>Aurora Violet</strong><div style="font-size:10px; color:#8b949e;">Mystic Cosmic Nebula Hue</div></div>
+      </div>
+      <div class="theme-item" onclick="setTheme('white')">
+        <div class="theme-color-dot" style="background:#e0fbfc;"></div>
+        <div><strong>Crystal White</strong><div style="font-size:10px; color:#8b949e;">Glacial Frost Diamond Silver</div></div>
+      </div>
+      <div class="theme-item" onclick="setTheme('blackgold')">
+        <div class="theme-color-dot" style="background:#ff6b35;"></div>
+        <div><strong>Obsidian Fire</strong><div style="font-size:10px; color:#8b949e;">Volcanic Magma Molten Gold</div></div>
+      </div>
+      <div class="theme-item" onclick="setTheme('mint')">
+        <div class="theme-color-dot" style="background:#3fc3a6;"></div>
+        <div><strong>Emerald Mint</strong><div style="font-size:10px; color:#8b949e;">Breezy Jadeite Botanical Green</div></div>
+      </div>
+      <div class="theme-item" onclick="setTheme('sunset')">
+        <div class="theme-color-dot" style="background:#ff713d;"></div>
+        <div><strong>Sunset Coral</strong><div style="font-size:10px; color:#8b949e;">Twilight Glow Fiery Dusk</div></div>
+      </div>
+      <div class="theme-item" onclick="setTheme('glacier')">
+        <div class="theme-color-dot" style="background:#70d6ff;"></div>
+        <div><strong>Arctic Glacier</strong><div style="font-size:10px; color:#8b949e;">Translucent Polar Ice Spring</div></div>
+      </div>
+      <div class="theme-item" onclick="setTheme('cherry')">
+        <div class="theme-color-dot" style="background:#ff9ebb;"></div>
+        <div><strong>Cherry Blossom</strong><div style="font-size:10px; color:#8b949e;">Delicate Spring Sakura Whisper</div></div>
+      </div>
+      <div class="theme-item" onclick="setTheme('lavender')">
+        <div class="theme-color-dot" style="background:#9d8df1;"></div>
+        <div><strong>Provence Mist</strong><div style="font-size:10px; color:#8b949e;">Calming Lavender Morning Haze</div></div>
+      </div>
+      <div class="theme-item" onclick="setTheme('emerald')">
+        <div class="theme-color-dot" style="background:#2ec4b6;"></div>
+        <div><strong>Deep Forest</strong><div style="font-size:10px; color:#8b949e;">Mysterious Enchanted Gem Green</div></div>
+      </div>
+      <div class="theme-item" onclick="setTheme('cyberpunk')">
+        <div class="theme-color-dot" style="background:#ff007f;"></div>
+        <div><strong>Cyber Neon</strong><div style="font-size:10px; color:#8b949e;">Futuristic Synthwave Electric Pop</div></div>
+      </div>
+      <div class="theme-item" onclick="setTheme('caramel')">
+        <div class="theme-color-dot" style="background:#e67e22;"></div>
+        <div><strong>Caramel Amber</strong><div style="font-size:10px; color:#8b949e;">Warm Autumn Honey & Topaz</div></div>
+      </div>
+      <div class="theme-item" onclick="setTheme('blackpearl')">
+        <div class="theme-color-dot" style="background:#8e9aaf;"></div>
+        <div><strong>Black Pearl</strong><div style="font-size:10px; color:#8b949e;">Abyssal Lunar Silver Minimal</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9 Botanical Flowers Modal -->
+  <div class="popup-panel" id="style-menu">
+    <div style="font-weight:600; font-size:13px; color:#fff; display:flex; justify-content:space-between; align-items:center;">
+      <span>✨ Select Specimen (9 Mathematical Flowers)</span>
+      <span style="font-size:11px; color:#888;">Hotkey: V</span>
+    </div>
+    <div class="style-list">
+      <div class="style-item active" onclick="setStyle('bouquet')">
+        <span>💐</span> <div><strong>Rose Bouquet</strong><div style="font-size:11px; color:#8b949e;">11 layered blooming roses bouquet</div></div>
+      </div>
+      <div class="style-item" onclick="setStyle('hydrangea')">
+        <span>💠</span> <div><strong>Hydrangea</strong><div style="font-size:11px; color:#8b949e;">84 florets sphere in celestial light</div></div>
+      </div>
+      <div class="style-item" onclick="setStyle('single')">
+        <span>🌹</span> <div><strong>Solo Rose</strong><div style="font-size:11px; color:#8b949e;">Hyper-realistic macro bloom close-up</div></div>
+      </div>
+      <div class="style-item" onclick="setStyle('tulip')">
+        <span>🌷</span> <div><strong>Luminous Tulip</strong><div style="font-size:11px; color:#8b949e;">Serene cup of delicate ambient light</div></div>
+      </div>
+      <div class="style-item" onclick="setStyle('lily')">
+        <span>⚜️</span> <div><strong>Starlight Lily</strong><div style="font-size:11px; color:#8b949e;">6 radiant petals with glowing stamens</div></div>
+      </div>
+      <div class="style-item" onclick="setStyle('peony')">
+        <span>🌺</span> <div><strong>Folded Peony</strong><div style="font-size:11px; color:#8b949e;">Fluffy thousand-layered ruffled petals</div></div>
+      </div>
+      <div class="style-item" onclick="setStyle('orchid')">
+        <span>🦋</span> <div><strong>Flight Orchid</strong><div style="font-size:11px; color:#8b949e;">Sculptural winged petals and 3D lip</div></div>
+      </div>
+      <div class="style-item" onclick="setStyle('heart')">
+        <span>💖</span> <div><strong>Romantic Heart</strong><div style="font-size:11px; color:#8b949e;">3D mathematical heart-shaped floral array</div></div>
+      </div>
+      <div class="style-item" onclick="setStyle('cosmic')">
+        <span>🌌</span> <div><strong>Cosmic Vortex</strong><div style="font-size:11px; color:#8b949e;">Logarithmic spiral galactic star dust</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Parameters Settings Panel -->
+  <div class="popup-panel" id="settings">
+    <label>Play Speed<input id="speed" type="range" min="0" max="2" step="0.05" value="1"><output>1.00</output></label>
+    <label>Particle Flow<input id="flow" type="range" min="0" max="2" step="0.05" value="1"><output>1.00</output></label>
+    <label>Soft Bloom<input id="bloom" type="range" min="0" max="1.8" step="0.05" value="0.85"><output>0.85</output></label>
+    <label>Exposure<input id="exposure" type="range" min="0.5" max="2.2" step="0.05" value="1.35"><output>1.35</output></label>
+    <label>Code Speed<input id="scroll-speed" type="range" min="0.2" max="3.0" step="0.1" value="1.0"><output>1.00</output></label>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ==================== 1. Original Python Source Auto-Scroll System ====================
+const codeViewport = document.getElementById('code-viewport');
+const codeContent = document.getElementById('code-scroll-content');
+let scrollPos = 0;
+let scrollSpeed = 0.55;
+let isAutoScroll = true;
+
+function updateCodeScroll() {
+  if (isAutoScroll && codeContent && codeViewport) {
+    scrollPos += scrollSpeed;
+    const maxScroll = codeContent.scrollHeight - codeViewport.clientHeight;
+    if (scrollPos >= maxScroll) {
+      scrollPos = 0;
+    }
+    codeContent.style.transform = `translateY(-${scrollPos}px)`;
+  }
+  requestAnimationFrame(updateCodeScroll);
+}
+requestAnimationFrame(updateCodeScroll);
+
+codeViewport.addEventListener('wheel', (e) => {
+  scrollPos += e.deltaY * 0.8;
+  const maxScroll = codeContent.scrollHeight - codeViewport.clientHeight;
+  scrollPos = Math.max(0, Math.min(maxScroll, scrollPos));
+  codeContent.style.transform = `translateY(-${scrollPos}px)`;
+}, { passive: true });
+
+function toggleScrollState() {
+  isAutoScroll = !isAutoScroll;
+  document.getElementById('scroll-icon').textContent = isAutoScroll ? '▶' : '⏸';
+  document.getElementById('scroll-text').textContent = isAutoScroll ? 'SCROLLING' : 'PAUSED';
+}
+document.getElementById('scroll-toggle').onclick = toggleScrollState;
+
+// ==================== 2. 16 Radiant Light Palettes & 9 Botanical Specimens ====================
+const THEMES = {
+  "ruby": {
+    "name": "Ruby Red",
+    "icon": "🌹",
+    "dot": "#ff1744",
+    "sub": "Classic Passionate Crimson",
+    "core": [
+      0.55,
+      0.04,
+      0.06
+    ],
+    "mid": [
+      1.0,
+      0.14,
+      0.18
+    ],
+    "rim": [
+      1.0,
+      0.94,
+      0.88
+    ],
+    "sepal": [
+      0.26,
+      0.48,
+      0.22
+    ],
+    "ribbon": [
+      1.0,
+      0.88,
+      0.9
+    ],
+    "box": [
+      0.65,
+      0.78,
+      0.92
+    ]
+  },
+  "blue": {
+    "name": "Sapphire Blue",
+    "icon": "💎",
+    "dot": "#0096c7",
+    "sub": "Deep Oceanic Celestial Glow",
+    "core": [
+      0.02,
+      0.08,
+      0.32
+    ],
+    "mid": [
+      0.08,
+      0.52,
+      0.98
+    ],
+    "rim": [
+      0.85,
+      0.96,
+      1.0
+    ],
+    "sepal": [
+      0.12,
+      0.35,
+      0.42
+    ],
+    "ribbon": [
+      0.85,
+      0.95,
+      1.0
+    ],
+    "box": [
+      0.4,
+      0.75,
+      1.0
+    ]
+  },
+  "pink": {
+    "name": "Pink Diamond",
+    "icon": "🌸",
+    "dot": "#ff758f",
+    "sub": "Tender Sakura Peach Pastel",
+    "core": [
+      0.65,
+      0.08,
+      0.25
+    ],
+    "mid": [
+      1.0,
+      0.45,
+      0.65
+    ],
+    "rim": [
+      1.0,
+      0.92,
+      0.96
+    ],
+    "sepal": [
+      0.32,
+      0.62,
+      0.38
+    ],
+    "ribbon": [
+      1.0,
+      0.92,
+      0.95
+    ],
+    "box": [
+      0.92,
+      0.65,
+      0.82
+    ]
+  },
+  "gold": {
+    "name": "Champagne Gold",
+    "icon": "✨",
+    "dot": "#f1c40f",
+    "sub": "Radiant Amber Luxury Aura",
+    "core": [
+      0.55,
+      0.28,
+      0.04
+    ],
+    "mid": [
+      1.0,
+      0.72,
+      0.18
+    ],
+    "rim": [
+      1.0,
+      0.97,
+      0.82
+    ],
+    "sepal": [
+      0.36,
+      0.46,
+      0.18
+    ],
+    "ribbon": [
+      1.0,
+      0.96,
+      0.88
+    ],
+    "box": [
+      0.95,
+      0.82,
+      0.45
+    ]
+  },
+  "purple": {
+    "name": "Aurora Violet",
+    "icon": "🔮",
+    "dot": "#b5179e",
+    "sub": "Mystic Cosmic Nebula Hue",
+    "core": [
+      0.28,
+      0.02,
+      0.45
+    ],
+    "mid": [
+      0.72,
+      0.18,
+      0.98
+    ],
+    "rim": [
+      0.96,
+      0.84,
+      1.0
+    ],
+    "sepal": [
+      0.18,
+      0.36,
+      0.38
+    ],
+    "ribbon": [
+      0.92,
+      0.85,
+      1.0
+    ],
+    "box": [
+      0.82,
+      0.55,
+      1.0
+    ]
+  },
+  "white": {
+    "name": "Crystal White",
+    "icon": "❄️",
+    "dot": "#e0fbfc",
+    "sub": "Glacial Frost Diamond Silver",
+    "core": [
+      0.25,
+      0.35,
+      0.45
+    ],
+    "mid": [
+      0.78,
+      0.88,
+      0.98
+    ],
+    "rim": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "sepal": [
+      0.35,
+      0.52,
+      0.48
+    ],
+    "ribbon": [
+      0.94,
+      0.97,
+      1.0
+    ],
+    "box": [
+      0.85,
+      0.92,
+      1.0
+    ]
+  },
+  "blackgold": {
+    "name": "Obsidian Fire",
+    "icon": "🔥",
+    "dot": "#ff6b35",
+    "sub": "Volcanic Magma Molten Gold",
+    "core": [
+      0.08,
+      0.05,
+      0.03
+    ],
+    "mid": [
+      0.9,
+      0.26,
+      0.05
+    ],
+    "rim": [
+      1.0,
+      0.85,
+      0.25
+    ],
+    "sepal": [
+      0.18,
+      0.2,
+      0.12
+    ],
+    "ribbon": [
+      1.0,
+      0.65,
+      0.15
+    ],
+    "box": [
+      1.0,
+      0.65,
+      0.2
+    ]
+  },
+  "mint": {
+    "name": "Emerald Mint",
+    "icon": "🍃",
+    "dot": "#3fc3a6",
+    "sub": "Breezy Jadeite Botanical Green",
+    "core": [
+      0.02,
+      0.25,
+      0.22
+    ],
+    "mid": [
+      0.25,
+      0.78,
+      0.65
+    ],
+    "rim": [
+      0.82,
+      1.0,
+      0.94
+    ],
+    "sepal": [
+      0.15,
+      0.48,
+      0.42
+    ],
+    "ribbon": [
+      0.85,
+      1.0,
+      0.92
+    ],
+    "box": [
+      0.45,
+      0.9,
+      0.82
+    ]
+  },
+  "sunset": {
+    "name": "Sunset Coral",
+    "icon": "🌅",
+    "dot": "#ff713d",
+    "sub": "Twilight Glow Fiery Dusk",
+    "core": [
+      0.45,
+      0.08,
+      0.18
+    ],
+    "mid": [
+      1.0,
+      0.42,
+      0.22
+    ],
+    "rim": [
+      1.0,
+      0.9,
+      0.76
+    ],
+    "sepal": [
+      0.42,
+      0.48,
+      0.28
+    ],
+    "ribbon": [
+      1.0,
+      0.82,
+      0.68
+    ],
+    "box": [
+      1.0,
+      0.55,
+      0.35
+    ]
+  },
+  "glacier": {
+    "name": "Arctic Glacier",
+    "icon": "🧊",
+    "dot": "#70d6ff",
+    "sub": "Translucent Polar Ice Spring",
+    "core": [
+      0.05,
+      0.18,
+      0.45
+    ],
+    "mid": [
+      0.35,
+      0.75,
+      1.0
+    ],
+    "rim": [
+      0.9,
+      0.98,
+      1.0
+    ],
+    "sepal": [
+      0.15,
+      0.42,
+      0.55
+    ],
+    "ribbon": [
+      0.88,
+      0.96,
+      1.0
+    ],
+    "box": [
+      0.55,
+      0.85,
+      1.0
+    ]
+  },
+  "cherry": {
+    "name": "Cherry Blossom",
+    "icon": "🌸",
+    "dot": "#ff9ebb",
+    "sub": "Delicate Spring Sakura Whisper",
+    "core": [
+      0.5,
+      0.12,
+      0.22
+    ],
+    "mid": [
+      0.98,
+      0.55,
+      0.7
+    ],
+    "rim": [
+      1.0,
+      0.95,
+      0.98
+    ],
+    "sepal": [
+      0.38,
+      0.52,
+      0.35
+    ],
+    "ribbon": [
+      1.0,
+      0.92,
+      0.96
+    ],
+    "box": [
+      0.98,
+      0.75,
+      0.85
+    ]
+  },
+  "lavender": {
+    "name": "Provence Mist",
+    "icon": "🪻",
+    "dot": "#9d8df1",
+    "sub": "Calming Lavender Morning Haze",
+    "core": [
+      0.22,
+      0.1,
+      0.42
+    ],
+    "mid": [
+      0.58,
+      0.48,
+      0.95
+    ],
+    "rim": [
+      0.92,
+      0.88,
+      1.0
+    ],
+    "sepal": [
+      0.28,
+      0.42,
+      0.38
+    ],
+    "ribbon": [
+      0.9,
+      0.85,
+      1.0
+    ],
+    "box": [
+      0.75,
+      0.68,
+      1.0
+    ]
+  },
+  "emerald": {
+    "name": "Deep Forest",
+    "icon": "🌲",
+    "dot": "#2ec4b6",
+    "sub": "Mysterious Enchanted Gem Green",
+    "core": [
+      0.02,
+      0.18,
+      0.12
+    ],
+    "mid": [
+      0.1,
+      0.72,
+      0.52
+    ],
+    "rim": [
+      0.75,
+      1.0,
+      0.88
+    ],
+    "sepal": [
+      0.12,
+      0.38,
+      0.25
+    ],
+    "ribbon": [
+      0.78,
+      0.98,
+      0.85
+    ],
+    "box": [
+      0.35,
+      0.88,
+      0.65
+    ]
+  },
+  "cyberpunk": {
+    "name": "Cyber Neon",
+    "icon": "⚡",
+    "dot": "#ff007f",
+    "sub": "Futuristic Synthwave Electric Pop",
+    "core": [
+      0.15,
+      0.0,
+      0.35
+    ],
+    "mid": [
+      1.0,
+      0.0,
+      0.55
+    ],
+    "rim": [
+      0.0,
+      1.0,
+      0.95
+    ],
+    "sepal": [
+      0.0,
+      0.65,
+      0.85
+    ],
+    "ribbon": [
+      1.0,
+      0.2,
+      0.8
+    ],
+    "box": [
+      0.0,
+      0.95,
+      1.0
+    ]
+  },
+  "caramel": {
+    "name": "Caramel Amber",
+    "icon": "🍯",
+    "dot": "#e67e22",
+    "sub": "Warm Autumn Honey & Topaz",
+    "core": [
+      0.42,
+      0.15,
+      0.02
+    ],
+    "mid": [
+      0.95,
+      0.48,
+      0.1
+    ],
+    "rim": [
+      1.0,
+      0.92,
+      0.7
+    ],
+    "sepal": [
+      0.45,
+      0.42,
+      0.18
+    ],
+    "ribbon": [
+      1.0,
+      0.85,
+      0.6
+    ],
+    "box": [
+      0.95,
+      0.7,
+      0.3
+    ]
+  },
+  "blackpearl": {
+    "name": "Black Pearl",
+    "icon": "🖤",
+    "dot": "#8e9aaf",
+    "sub": "Abyssal Lunar Silver Minimal",
+    "core": [
+      0.03,
+      0.04,
+      0.06
+    ],
+    "mid": [
+      0.38,
+      0.44,
+      0.55
+    ],
+    "rim": [
+      0.92,
+      0.95,
+      1.0
+    ],
+    "sepal": [
+      0.18,
+      0.22,
+      0.28
+    ],
+    "ribbon": [
+      0.85,
+      0.9,
+      0.95
+    ],
+    "box": [
+      0.6,
+      0.7,
+      0.85
+    ]
+  }
+};
+const STYLES = {
+  "bouquet": {
+    "name": "Rose Bouquet",
+    "icon": "💐",
+    "desc": "11 layered blooming roses bouquet",
+    "pitch": 0.13,
+    "dist": 8.0
+  },
+  "hydrangea": {
+    "name": "Hydrangea",
+    "icon": "💠",
+    "desc": "84 florets sphere in celestial light",
+    "pitch": 0.1,
+    "dist": 6.75
+  },
+  "single": {
+    "name": "Solo Rose",
+    "icon": "🌹",
+    "desc": "Hyper-realistic macro bloom close-up",
+    "pitch": 0.12,
+    "dist": 7.8
+  },
+  "tulip": {
+    "name": "Luminous Tulip",
+    "icon": "🌷",
+    "desc": "Serene cup of delicate ambient light",
+    "pitch": 0.07,
+    "dist": 7.0
+  },
+  "lily": {
+    "name": "Starlight Lily",
+    "icon": "⚜️",
+    "desc": "6 radiant petals with glowing stamens",
+    "pitch": 0.38,
+    "dist": 7.6
+  },
+  "peony": {
+    "name": "Folded Peony",
+    "icon": "🌺",
+    "desc": "Fluffy thousand-layered ruffled petals",
+    "pitch": 0.46,
+    "dist": 7.15
+  },
+  "orchid": {
+    "name": "Flight Orchid",
+    "icon": "🦋",
+    "desc": "Sculptural winged petals and 3D lip",
+    "pitch": 0.02,
+    "dist": 7.6
+  },
+  "heart": {
+    "name": "Romantic Heart",
+    "icon": "💖",
+    "desc": "3D mathematical heart-shaped floral array",
+    "pitch": 0.15,
+    "dist": 8.2
+  },
+  "cosmic": {
+    "name": "Cosmic Vortex",
+    "icon": "🌌",
+    "desc": "Logarithmic spiral galactic star dust",
+    "pitch": 0.22,
+    "dist": 8.5
+  }
+};
+
+let currentThemeKey = 'ruby';
+let currentStyleKey = 'bouquet';
+
+let curColors = {
+  core: [...THEMES.ruby.core],
+  mid:  [...THEMES.ruby.mid],
+  rim:  [...THEMES.ruby.rim],
+  sepal:[...THEMES.ruby.sepal],
+  ribbon:[...THEMES.ruby.ribbon],
+  box:  [...THEMES.ruby.box]
+};
+
+function updateThemeColors() {
+  const target = THEMES[currentThemeKey];
+  const factor = 0.08;
+  for (let k of ['core', 'mid', 'rim', 'sepal', 'ribbon', 'box']) {
+    for (let c = 0; c < 3; c++) {
+      curColors[k][c] += (target[k][c] - curColors[k][c]) * factor;
+    }
+  }
+}
+
+// ==================== 3. WebGL 2 Mathematical Engine ====================
+const TAU = Math.PI * 2;
+const PARAMS = {
+  speed: 1, flow: 1, bloom: 0.85, exposure: 1.35, spin: true, box: true, paused: false,
+  duration: 16, cameraDistance: 8.0, cameraPitch: 0.13, manualYaw: 0, manualPitch: 0,
+  codeVisible: true
+};
+
+const canvas = document.getElementById('canvas');
+const gl = canvas.getContext('webgl2', {
+  alpha: false, antialias: false, preserveDrawingBuffer: true, depth: false
+});
+
+if (!gl) {
+  document.getElementById('error').style.display = 'block';
+  document.getElementById('error').textContent = 'WebGL 2 graphics hardware acceleration required.';
+  throw new Error('WebGL 2 unavailable');
+}
+
+const HDR = !!gl.getExtension('EXT_color_buffer_float');
+gl.getExtension('OES_texture_float_linear');
+
+let rng = 932751;
+function rand() {
+  rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0;
+  return rng / 4294967296;
+}
+function gaussian() {
+  return Math.sqrt(-2 * Math.log(Math.max(1e-8, rand()))) * Math.cos(TAU * rand());
+}
+const mix = (a, b, t) => a + (b - a) * t;
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+function smooth(a, b, x) {
+  let k = clamp((x - a) / (b - a));
+  return k * k * (3 - 2 * k);
+}
+function normalize(v) {
+  let m = Math.hypot(...v) || 1;
+  return v.map(x => x / m);
+}
+const add = (a, b) => a.map((x, i) => x + b[i]);
+const sub = (a, b) => a.map((x, i) => x - b[i]);
+const mul = (a, s) => a.map(x => x * s);
+const cross = (a, b) => [a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]];
+
+function vertex(dst, p, c, opacity, size, flow, seed) {
+  dst.push(p[0], p[1], p[2], c[0], c[1], c[2], opacity, size, flow, seed);
+}
+
+const ivory = [1, 0.93, 0.87], pink = [1, 0.46, 0.48], coral = [1, 0.13, 0.15];
+const lerpc = (a, b, t) => a.map((v, i) => mix(v, b[i], t));
+
+function flowerTransform(p, b) {
+  const cp = Math.cos(b.az), sp = Math.sin(b.az), ct = Math.cos(b.tilt), st = Math.sin(b.tilt);
+  return [
+    b.x + b.scale * (p[0] * cp + p[1] * sp * st + p[2] * sp * ct),
+    b.y + b.scale * (p[1] * ct - p[2] * st),
+    b.z + b.scale * (-p[0] * sp + p[1] * cp * st + p[2] * cp * ct)
+  ];
+}
+
+const petalCounts = [3, 5, 7, 8, 9];
+function petalPoint(layer, j, u, v, phase) {
+  const n = petalCounts[layer], k = layer / 4, a = j * TAU / n + phase + layer * 0.58;
+  const spread = (TAU / n) * (0.67 + 0.08 * k);
+  const w = Math.sin(Math.PI * v / 2);
+  const tip = 0.105 + k * 0.81;
+  let r = 0.027 + k * 0.015 + (tip - 0.025) * Math.pow(w, 1.02);
+  let angle = a + u * spread * (0.52 + 0.48 * w);
+  let y = -0.33 + (0.96 - 0.08 * k) * Math.pow(v, 0.76) - (0.018 + 0.06 * k) * Math.pow(v, 5);
+  y += 0.065 * u * u * Math.pow(v, 1.6) + 0.025 * Math.sin(u * 4.5 + j * 1.7 + phase) * v * v;
+  const edge = Math.pow(v, 4);
+  r += 0.03 * edge * Math.sin(u * 9 + phase + j * 1.2) + 0.02 * Math.sin(v * 6 + u * 5 + j) * v;
+  y += 0.035 * edge * Math.sin(u * 10.5 + j + phase);
+  r += 0.037 * k * smooth(0.75, 1, v);
+  return [Math.sin(angle) * r, y, Math.cos(angle) * r];
+}
+
+function petalColour(layer, j, u, v, b) {
+  let rim = Math.max(smooth(0.82, 1, v) * 0.97, smooth(0.85, 1, Math.abs(u)) * 0.95);
+  let patch = 0.5 + 0.5 * Math.sin(u * 4.5 + v * 5.2 + j * 1.39 + b.phase);
+  let c = lerpc(coral, pink, 0.08 + 0.10 * patch);
+  c = lerpc(c, ivory, clamp(rim + 0.08 * patch));
+  let light = 0.68 + 0.25 * smooth(0.08, 0.75, v) + 0.07 * patch;
+  if (v < 0.2) c = lerpc([0.30, 0.21, 0.105], c, smooth(0, 0.22, v));
+  return c.map(z => z * light);
+}
+
+function ribbonPoint(side, t, w) {
+  const a = TAU * t;
+  const x = side * (0.06 + 0.47 * Math.pow(Math.sin(a / 2), 1.15));
+  const y = -1.005 + 0.105 * Math.sin(a) + w * 0.12 * (0.65 + 0.35 * Math.sin(a / 2));
+  const z = 0.10 * Math.sin(a) + 0.18 * Math.sin(a / 2) + side * 0.025;
+  return [x, y, z];
+}
+
+// ==================== 4. 9 Botanical Form Generators ====================
+function generateSceneGeometry(style = 'bouquet') {
+  const particles = [], threads = [];
+  const anchors = [];
+  rng = 932751;
+
+  const isBotanical = ['hydrangea', 'tulip', 'lily', 'peony', 'orchid'].includes(style);
+
+  if (isBotanical) {
+    function normalAt(fn, t, u, guide) {
+      const dt = sub(fn(clamp(t+.002, .00001, .99999), u), fn(clamp(t-.002, .00001, .99999), u));
+      const du = sub(fn(t, clamp(u+.002, -.99999, .99999)), fn(t, clamp(u-.002, -.99999, .99999)));
+      let n = normalize(cross(du, dt));
+      if (guide && (n[0]*guide[0] + n[1]*guide[1] + n[2]*guide[2]) < 0) n = mul(n, -1);
+      return n;
+    }
+
+    function botanicalPetal(fn, { count=1400, tint=0.1, guide=[0,0,1], mat=0, veins=16 }={}) {
+      const s = rand() * 100, motion = mat === 1 ? 0.3 : 0.5;
+      const colForTone = (t, u) => {
+        let tone = clamp(tint + 0.45 * Math.pow(Math.abs(u), 5) + 0.55 * Math.pow(t, 7) + 0.04 * Math.sin(t*18 + u*10 + s));
+        if (mat === 1) return lerpc([0.18, 0.45, 0.22], [0.55, 0.72, 0.38], tone);
+        if (mat === 2) return lerpc([0.98, 0.78, 0.25], [1.0, 0.95, 0.85], tone);
+        let c = lerpc(coral, pink, tone * 0.6);
+        return lerpc(c, ivory, Math.pow(tone, 1.4));
+      };
+
+      for (let i = 0; i < count; i++) {
+        let t = Math.pow(rand(), 0.72), u = rand() * 2 - 1;
+        let n = normalAt(fn, t, u, guide), p = fn(t, u);
+        let mist = rand() < 0.09;
+        p = add(p, mul(n, mist ? 0.015 : 0.002));
+        let c = colForTone(t, u);
+        vertex(particles, p, c, mist ? 0.25 : 0.68, rand() * 0.5 + 0.75, mist ? 1.4 : motion, s + rand() * 10);
+        if (i % 28 === 0) anchors.push({ p, c, seed: s });
+      }
+
+      for (let k = 0; k < veins; k++) {
+        const v = -0.92 + 1.84 * (k / Math.max(1, veins - 1)), ss = rand() * 100;
+        let prev = null;
+        for (let j = 0; j < 24; j++) {
+          const t = 0.05 + 0.93 * (j / 23), u = v * (0.2 + 0.8 * Math.pow(t, 0.32));
+          const n = normalAt(fn, t, u, guide), p = add(fn(t, u), mul(n, 0.003));
+          let c = colForTone(t, u);
+          if (prev) {
+            vertex(threads, prev, c, 0.08, 1, motion, ss);
+            vertex(threads, p,    c, 0.08, 1, motion, ss);
+          }
+          if (j % 3 === 0) vertex(particles, p, c, 0.5, 0.8, motion, ss);
+          prev = p;
+        }
+      }
+    }
+
+    function botanicalTube(path, radius=0.024, { count=3200, mat=1 }={}) {
+      const ss = rand() * 100;
+      for (let k = 0; k < count; k++) {
+        let t = rand(), a = rand() * TAU;
+        let p = path(t);
+        let d = normalize(sub(path(Math.min(1, t + 0.01)), path(Math.max(0, t - 0.01))));
+        let tx = normalize(cross(d, [0, 0, 1]));
+        if (Math.hypot(...tx) < 0.1) tx = [1, 0, 0];
+        let ty = normalize(cross(d, tx));
+        let norm = add(mul(tx, Math.cos(a)), mul(ty, Math.sin(a)));
+        let pt = add(p, mul(norm, radius));
+        let c = mat === 1 ? [0.22, 0.46, 0.20] : [0.95, 0.82, 0.35];
+        vertex(particles, pt, c, 0.65, 0.9, 0.25, ss + rand() * 10);
+      }
+    }
+
+    function botanicalCommonStem(top = 0.15, bottom = -1.45) {
+      botanicalTube(t => [0.04 * Math.sin(t * 4) * (1 - t), mix(bottom, top, t), 0.02 * Math.sin(t * 5)], 0.025, { count: 5000, mat: 1 });
+      for (let side of [-1, 1]) {
+        const base = [0, mix(bottom, top, 0.35), 0];
+        const fn = (t, u) => {
+          let w = 0.26 * Math.pow(Math.sin(Math.PI * t), 0.75);
+          return [
+            base[0] + side * (0.95 * t + 0.03 * Math.sin(t * 4)),
+            base[1] + 0.38 * Math.sin(t * 2.2) - 0.12 * t,
+            base[2] + 0.12 * Math.sin(t * 4) + u * w
+          ];
+        };
+        botanicalPetal(fn, { count: 3200, tint: 0.15, mat: 1, veins: 9 });
+      }
+    }
+
+    if (style === 'hydrangea') {
+      const N = 84, R = 1.05, cy = 0.45;
+      for (let i = 0; i < N; i++) {
+        let yy = 1 - 2 * (i + 0.5) / N;
+        let aa = i * 2.399963229728653 + 0.31;
+        let rr = Math.sqrt(1 - yy * yy);
+        let normal = normalize([rr * Math.cos(aa), yy * 0.97, rr * Math.sin(aa)]);
+        let centre = [normal[0] * R * 1.15, cy + normal[1] * R * 0.78, normal[2] * R * 0.85];
+        let tx = normalize(cross([0, 1, 0], normal)), ty = normalize(cross(normal, tx));
+        const rot = rand() * TAU, L = 0.28 + rand() * 0.06, W = L * 0.62;
+        const local = (x, y, z) => add(centre, add(mul(tx, x), add(mul(ty, y), mul(normal, z))));
+        for (let j = 0; j < 4; j++) {
+          const a = rot + j * Math.PI / 2;
+          const fn = (t, u) => {
+            let w = W * Math.pow(Math.sin(Math.PI * t), 0.54) * u;
+            let rad = 0.012 + L * t;
+            let depth = 0.06 * t * t + 0.01 * Math.sin(t * Math.PI) * (1 - u * u);
+            return local(rad * Math.cos(a) - w * Math.sin(a), rad * Math.sin(a) + w * Math.cos(a), depth);
+          };
+          botanicalPetal(fn, { count: 700, tint: rand() * 0.3, guide: normal, veins: 7 });
+        }
+        if (i % 7 === 0) {
+          botanicalTube(t => add(mul(centre, t), [0, mix(-0.25, centre[1], t) - centre[1] * t, 0]), 0.008, { count: 300, mat: 1 });
+        }
+      }
+      botanicalCommonStem(-0.2, -1.35);
+    } else if (style === 'tulip') {
+      for (let j = 0; j < 6; j++) {
+        const a = j * TAU / 6 + 0.2, inner = j % 2;
+        const fn = (t, u) => {
+          let rad = (0.04 + 0.58 * Math.pow(Math.sin(t * 2.06), 0.84)) * (inner ? 0.94 : 1.03);
+          let aa = a + u * (0.50 + 0.08 * Math.sin(t * Math.PI)) * Math.pow(Math.sin(t * Math.PI / 2), 0.28);
+          let y = -0.22 + 1.48 * t - 0.09 * u * u * Math.pow(t, 3);
+          return [rad * Math.cos(aa), y, rad * Math.sin(aa)];
+        };
+        botanicalPetal(fn, { count: 12000, tint: inner ? 0.1 : 0.22, guide: [Math.cos(a), 0.2, Math.sin(a)], veins: 36 });
+      }
+      botanicalCommonStem(-0.22, -1.45);
+    } else if (style === 'lily') {
+      for (let j = 0; j < 6; j++) {
+        const a = j * TAU / 6 + 0.3, width = j % 2 ? 0.35 : 0.46;
+        const fn = (t, u) => {
+          let rr = 0.03 + 1.34 * t, w = width * Math.pow(Math.sin(Math.PI * t), 0.72) * u;
+          let y = 0.25 + 1.28 * t - 1.30 * t * t - 0.12 * Math.pow(t, 5);
+          return [rr * Math.cos(a) - w * Math.sin(a), y, rr * Math.sin(a) + w * Math.cos(a)];
+        };
+        botanicalPetal(fn, { count: 14000, tint: 0.14, guide: [0, 1, 0], veins: 32 });
+        const tip = [0.35 * Math.cos(a), 1.15, 0.35 * Math.sin(a)];
+        botanicalTube(t => [tip[0] * Math.pow(t, 1.4), mix(0.3, tip[1], t), tip[2] * Math.pow(t, 1.4)], 0.012, { count: 900, mat: 2 });
+      }
+      botanicalCommonStem(0.25, -1.4);
+    } else if (style === 'peony') {
+      let counts = [5, 7, 9, 11, 13, 15];
+      for (let layer = counts.length - 1; layer >= 0; layer--) {
+        const k = layer / (counts.length - 1), count = counts[layer];
+        for (let j = 0; j < count; j++) {
+          const a = j * TAU / count + layer * 0.45, R = mix(0.16, 1.22, k), spread = (TAU / count) * 0.68;
+          const fn = (t, u) => {
+            let radius = 0.025 + R * Math.pow(Math.sin(t * Math.PI / 2), 1.1);
+            let ang = a + u * spread * (0.25 + 0.75 * Math.sin(t * Math.PI / 2));
+            let y = 0.04 + 1.25 * Math.pow(t, 0.75) - 0.42 * k * Math.pow(t, 5) + 0.08 * u * u * t * t;
+            radius += 0.04 * Math.sin(u * 9 + j) * Math.pow(t, 4);
+            return [radius * Math.cos(ang), y, radius * Math.sin(ang)];
+          };
+          botanicalPetal(fn, { count: 2400, tint: 0.12 + 0.1 * k, guide: [Math.cos(a), 0.7, Math.sin(a)], veins: 14 });
+        }
+      }
+      botanicalCommonStem(0.08, -1.45);
+    } else if (style === 'orchid') {
+      const cy = 0.45;
+      const defs = [
+        { a: Math.PI / 2, L: 1.0, W: 0.34, t: 0.12 },
+        { a: -0.76, L: 1.08, W: 0.32, t: 0.08 },
+        { a: Math.PI + 0.76, L: 1.08, W: 0.32, t: 0.08 },
+        { a: 0.13, L: 1.22, W: 0.62, t: 0.22 },
+        { a: Math.PI - 0.13, L: 1.22, W: 0.62, t: 0.22 }
+      ];
+      for (let d of defs) {
+        let fn = (t, u) => {
+          let w = d.W * Math.pow(Math.sin(Math.PI * t), 0.69) * u, rr = 0.045 + d.L * t;
+          return [rr * Math.cos(d.a) - w * Math.sin(d.a), cy + rr * Math.sin(d.a) + w * Math.cos(d.a), 0.04 + 0.2 * t * t + 0.05 * u * u];
+        };
+        botanicalPetal(fn, { count: 12000, tint: d.t, guide: [0, 0, 1], veins: 28 });
+      }
+      const lip = (t, u) => {
+        let w = 0.36 * Math.pow(Math.sin(Math.PI * t), 0.7) * u;
+        return [w, cy - 0.05 - 0.62 * t + 0.1 * u * u, 0.25 + 0.35 * Math.sin(Math.PI * t) + 0.1 * u * u];
+      };
+      botanicalPetal(lip, { count: 14000, tint: 0.30, guide: [0, 0, 1], veins: 26 });
+      botanicalCommonStem(0.42, -1.45);
+    }
+  } else {
+    let blooms = [];
+    if (style === 'single') {
+      blooms = [{ x: 0, y: 0.25, z: 0, scale: 1.65, tilt: 0.12, az: 0, phase: 0.2 }];
+    } else if (style === 'heart') {
+      blooms = [{ x: 0, y: 0.75, z: 0, scale: 0.75, tilt: 0, az: 0, phase: 0.2 }];
+      for (let j = 0; j < 8; j++) {
+        let t = j * TAU / 8;
+        let hx = 0.85 * 16 * Math.pow(Math.sin(t), 3) / 16;
+        let hz = -0.85 * (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) / 16;
+        blooms.push({ x: hx, y: 0.45 + 0.15 * Math.sin(t*2), z: hz, scale: 0.65, tilt: 0.68, az: Math.atan2(hx, hz), phase: rand() * TAU });
+      }
+    } else if (style === 'cosmic') {
+      blooms = [{ x: 0, y: 0.85, z: 0, scale: 0.82, tilt: 0, az: 0, phase: 0.2 }];
+      for (let j = 0; j < 9; j++) {
+        let r = 0.35 + j * 0.08, ang = j * 0.72;
+        blooms.push({ x: r * Math.sin(ang), y: 0.75 - j * 0.09, z: r * Math.cos(ang), scale: 0.72, tilt: 0.85, az: ang, phase: rand() * TAU });
+      }
+    } else {
+      blooms = [{ x: 0, y: 1.05, z: 0, scale: 0.78, tilt: 0, az: 0, phase: 0.2 }];
+      for (let j = 0; j < 4; j++) {
+        let a = j * TAU / 4 + 0.35;
+        blooms.push({ x: 0.49 * Math.sin(a), y: 0.75 + 0.05 * Math.sin(a * 2), z: 0.49 * Math.cos(a), scale: 0.76, tilt: 0.65, az: a, phase: rand() * TAU });
+      }
+      for (let j = 0; j < 6; j++) {
+        let a = j * TAU / 6 + 0.11;
+        blooms.push({ x: 0.72 * Math.sin(a), y: 0.22 + 0.09 * Math.cos(a * 3), z: 0.72 * Math.cos(a), scale: 0.72, tilt: 1.02, az: a, phase: rand() * TAU });
+      }
+    }
+
+    for (const b of blooms) {
+      const baseCount = style === 'single' ? 750 : 350;
+      for (let layer = 0; layer < 5; layer++) {
+        for (let j = 0; j < petalCounts[layer]; j++) {
+          const count = baseCount + layer * 28;
+          for (let k = 0; k < count; k++) {
+            let u = rand() * 2 - 1, v = Math.sqrt(rand());
+            let p = flowerTransform(petalPoint(layer, j, u, v, b.phase), b);
+            let c = petalColour(layer, j, u, v, b);
+            let edge = smooth(0.75, 1, v), isMist = rand() < 0.29;
+            let fuzz = (isMist ? 0.038 : 0.010) * (1 + edge * 0.9);
+            p = p.map(z => z + gaussian() * fuzz);
+            let a = isMist ? 0.23 : 0.54;
+            vertex(particles, p, c, a, 0.84 + rand() * 0.57, isMist ? 1.55 : 0.54, rand() * 100);
+            if (k % 45 === 0) anchors.push({ p, c: lerpc(c, ivory, 0.38), v, seed: rand() * 100 });
+          }
+          for (let h = 0; h < 7; h++) {
+            const v = 0.86 + rand() * 0.135, seed = rand() * 100; let prev = null;
+            for (let step = 0; step < 24; step++) {
+              const u = -1 + 2 * step / 23;
+              let p = flowerTransform(petalPoint(layer, j, u, v + 0.008 * Math.sin(u * 12 + seed), b.phase), b);
+              p = p.map((z, q) => z + 0.006 * Math.sin(u * 15 + seed + q * 2));
+              if (prev) {
+                vertex(threads, prev, [1, 0.84, 0.77], 0.115, 1, 1.15, seed);
+                vertex(threads, p,    [1, 0.84, 0.77], 0.115, 1, 1.15, seed);
+              }
+              prev = p;
+            }
+          }
+        }
+      }
+    }
+
+    for (let j = 0; j < 15; j++) {
+      let a = j * TAU / 15 + 0.28, seed = rand() * 100;
+      for (let k = 0; k < 2400; k++) {
+        let u = rand() * 2 - 1, v = Math.sqrt(rand());
+        let r = 0.13 + 0.99 * Math.sin(v * 1.5), ang = a + u * 0.15 * Math.sin(Math.PI * v);
+        let y = -0.78 + 0.69 * v + 0.09 * Math.sin(v * 4 + u * 3 + j);
+        let p = [r * Math.sin(ang), y, r * Math.cos(ang)].map(x => x + gaussian() * 0.026);
+        let c = lerpc([0.24, 0.27, 0.13], [0.79, 0.76, 0.55], smooth(0.25, 1, v));
+        c = lerpc(c, [0.88, 0.79, 0.65], smooth(0.75, 1, Math.abs(u)) * 0.5);
+        vertex(particles, p, c, 0.13, 0.95 + rand() * 0.6, 1.1, seed + rand());
+      }
+    }
+
+    for (let j = 0; j < 25; j++) {
+      let a = j * TAU / 25, seed = rand() * 100;
+      for (let k = 0; k < 520; k++) {
+        let v = rand(), r = 0.035 + 0.16 * Math.pow(1 - v, 2) + 0.08 * smooth(0.70, 1, v);
+        let p = [r * Math.sin(a + 0.55 * v) + gaussian() * 0.014, -1.56 + 0.94 * v, r * Math.cos(a + 0.55 * v) + gaussian() * 0.014];
+        let c = lerpc([0.57, 0.07, 0.12], [0.37, 0.28, 0.15], smooth(0.55, 1, v));
+        vertex(particles, p, c, 0.32, 0.90 + rand() * 0.45, 1.4, seed + rand() * 3);
+      }
+    }
+
+    for (let side of [-1, 1]) {
+      for (let k = 0; k < 7800; k++) {
+        const t = rand(), w = rand() * 2 - 1;
+        let p = ribbonPoint(side, t, w).map(x => x + gaussian() * 0.009);
+        let c = lerpc([0.97, 0.88, 0.82], [1, 0.66, 0.72], 0.18 + 0.14 * Math.sin(t * TAU));
+        vertex(particles, p, c, 0.41, 1.05, 1.4, 0);
+      }
+    }
+  }
+
+  for (let k = 0; k < 25000; k++) {
+    let a = rand() * TAU, v = rand(), y = -0.55 + 0.75 * v;
+    let r = 1.05 * Math.sqrt(Math.max(0.01, 1 - Math.pow((y - 0.35) / 1.10, 2)));
+    let p = [r * Math.sin(a) + gaussian() * 0.04, y + gaussian() * 0.05, r * Math.cos(a) + gaussian() * 0.04];
+    let c = lerpc([0.25, 0.25, 0.15], [0.82, 0.77, 0.62], smooth(0.2, 0.95, v));
+    c = lerpc(c, ivory, 0.25 * rand());
+    vertex(particles, p, c, 0.22, 1.1 + rand() * 0.4, 1.5, 0);
+  }
+
+  return { particles, threads };
+}
+
+function shader(type, source) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, source);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function program(v, f) {
+  const p = gl.createProgram();
+  gl.attachShader(p, shader(gl.VERTEX_SHADER, v));
+  gl.attachShader(p, shader(gl.FRAGMENT_SHADER, f));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw Error(gl.getProgramInfoLog(p));
+  return p;
+}
+
+const vertexShader = `#version 300 es
+precision highp float;
+layout(location=0) in vec3 aPosition;
+layout(location=1) in vec3 aColour;
+layout(location=2) in vec4 aData;
+
+uniform float uTime, uYaw, uPitch, uDistance, uAspect, uScale, uFlow, uPeriod, uXOffset;
+uniform int uBox;
+uniform vec3 uThemeCore, uThemeMid, uThemeRim, uThemeSepal, uThemeRibbon, uThemeBox;
+
+out vec3 vColour; out float vOpacity;
+
+vec3 drift(vec3 p, float t) {
+  vec3 q = p * 5.2;
+  vec3 f = vec3(sin(q.y * 1.14 + q.z * 0.74 + t * 2.0), sin(q.z * 1.12 + q.x * 0.70 - t * 2.0), sin(q.x * 1.22 - q.y * 0.76 + t * 3.0));
+  vec3 s = vec3(sin(q.y * 2.75 + f.z * 1.6 - t * 4.0), cos(q.z * 2.54 + f.x * 1.5 + t * 3.0), sin(q.x * 2.82 + f.y * 1.7 + t * 4.0));
+  return f * 0.039 + s * 0.023;
+}
+
+vec3 getThemeColor(vec3 base) {
+  if (base.g > base.r * 1.05 && base.g > 0.15) {
+    float lum = dot(base, vec3(0.299, 0.587, 0.114));
+    return mix(uThemeSepal * 0.5, uThemeSepal * 1.35, smoothstep(0.1, 0.65, lum));
+  }
+  float minC = min(base.r, min(base.g, base.b));
+  float maxC = max(base.r, max(base.g, base.b));
+  if (minC > 0.55 && (maxC - minC) < 0.28) {
+    float lum = dot(base, vec3(0.333));
+    return mix(uThemeRibbon * 0.85, vec3(1.0, 0.98, 0.95), smoothstep(0.7, 1.0, lum));
+  }
+  if (base.r > base.g * 1.4 && base.r < 0.62 && base.b < 0.22) {
+    return mix(uThemeCore * 0.7, uThemeCore * 1.2, base.r);
+  }
+  float lum = dot(base, vec3(0.299, 0.587, 0.114));
+  float rim = smoothstep(0.64, 0.93, max(base.b * 1.6, lum));
+  vec3 col = mix(uThemeCore, uThemeMid, smoothstep(0.10, 0.56, lum));
+  col = mix(col, uThemeRim, rim);
+  return col;
+}
+
+void main() {
+  vec3 p = aPosition;
+  if (uBox == 0) {
+    float t = uTime * 6.28318530718 / uPeriod;
+    p += drift(p, t) * aData.z * uFlow;
+    p += vec3(sin(t * 5.0 + aData.w), cos(t * 4.0 + aData.w * 1.3), sin(t * 6.0 + aData.w * 0.8)) * 0.004 * aData.z * uFlow;
+    p.xz *= 1.0 + 0.006 * sin(t * 3.0 + p.y * 2.0);
+  }
+  float cy = cos(uYaw), sy = sin(uYaw);
+  p = vec3(cy * p.x + sy * p.z, p.y, -sy * p.x + cy * p.z);
+  float cp = cos(uPitch), sp = sin(uPitch);
+  p = vec3(p.x, cp * p.y - sp * p.z, sp * p.y + cp * p.z);
+  p.y += 0.035;
+  p.x += uXOffset;
+
+  float z = uDistance - p.z;
+  float f = 3.35;
+  gl_Position = vec4(p.x * f / uAspect, p.y * f, ((100.1 / 99.9) * z - (20.0 / 99.9)), z);
+  gl_PointSize = clamp(aData.y * uScale * 11.4 / z, 0.7, 4.6 * uScale);
+  float light = 0.82 + 0.18 * smoothstep(-1.2, 1.2, p.z);
+
+  vec3 baseColor = uBox == 1 ? uThemeBox : getThemeColor(aColour);
+  vColour = baseColor * (uBox == 1 ? 1.0 : light);
+  vOpacity = aData.x * (uBox == 1 ? 1.0 : (0.42 + 0.58 * smoothstep(-1.1, 1.1, p.z)));
+}`;
+
+const pointFragment = `#version 300 es
+precision highp float;
+in vec3 vColour; in float vOpacity;
+out vec4 frag;
+void main() {
+  vec2 uv = (gl_PointCoord - 0.5) * 2.0;
+  float r = dot(uv, uv);
+  if (r > 1.0) discard;
+  float a = exp(-r * 2.6) * (1.0 - smoothstep(0.72, 1.0, r));
+  frag = vec4(vColour, a * vOpacity);
+}`;
+
+const lineFragment = `#version 300 es
+precision highp float;
+in vec3 vColour; in float vOpacity;
+out vec4 frag;
+void main() { frag = vec4(vColour, vOpacity); }`;
+
+const pointsProgram = program(vertexShader, pointFragment);
+const linesProgram = program(vertexShader, lineFragment);
+
+function upload(vertices, existingVao = null, existingBuffer = null) {
+  const vao = existingVao || gl.createVertexArray();
+  gl.bindVertexArray(vao);
+  const buffer = existingBuffer || gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+  for (let [loc, num, offset] of [[0, 3, 0], [1, 3, 12], [2, 4, 24]]) {
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, num, gl.FLOAT, false, 40, offset);
+  }
+  return { vao, buffer, count: vertices.length / 10 };
+}
+
+let sceneGeo = generateSceneGeometry('bouquet');
+let pointGeometry = upload(sceneGeo.particles);
+let threadGeometry = upload(sceneGeo.threads);
+
+const cage = [], cageDots = [];
+const d = 1.52, low = -1.63, high = 1.75;
+const corners = [
+  [-d, low, -d], [d, low, -d], [d, low, d], [-d, low, d],
+  [-d, high, -d], [d, high, -d], [d, high, d], [-d, high, d]
+];
+for (let [i, j] of [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]]) {
+  vertex(cage, corners[i], [0.65, 0.78, 0.92], 0.52, 1, 0, 0);
+  vertex(cage, corners[j], [0.65, 0.78, 0.92], 0.52, 1, 0, 0);
+}
+for (let pt of corners) {
+  vertex(cageDots, pt, [1, 1, 1], 0.95, 3.2, 0, 0);
+}
+const boxGeometry = upload(cage);
+const boxDotsGeometry = upload(cageDots);
+
+const quadVertex = `#version 300 es
+precision highp float;
+out vec2 uv;
+void main() {
+  vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
+  uv = p;
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}`;
+
+const blurFragment = `#version 300 es
+precision highp float;
+in vec2 uv;
+uniform sampler2D image;
+uniform vec2 stepUV;
+uniform int firstPass;
+out vec4 frag;
+vec3 sampleAt(vec2 p) {
+  vec3 c = texture(image, p).rgb;
+  return firstPass == 1 ? max(c - 0.17, vec3(0.0)) : c;
+}
+void main() {
+  vec3 c = sampleAt(uv) * 0.227027;
+  c += sampleAt(uv + stepUV * 1.384615) * 0.316216;
+  c += sampleAt(uv - stepUV * 1.384615) * 0.316216;
+  c += sampleAt(uv + stepUV * 3.230769) * 0.070270;
+  c += sampleAt(uv - stepUV * 3.230769) * 0.070270;
+  frag = vec4(c, 1.0);
+}`;
+
+const finalFragment = `#version 300 es
+precision highp float;
+in vec2 uv;
+uniform sampler2D scene, glow;
+uniform float bloom, exposure;
+out vec4 frag;
+void main() {
+  vec3 a = texture(scene, uv).rgb;
+  vec3 b = texture(glow, uv).rgb;
+  vec3 c = (a + b * bloom * 0.86) * exposure;
+  vec2 v = (uv - 0.5) * vec2(1.33, 1.0);
+  float vign = 1.0 - 0.15 * dot(v, v);
+  c = vec3(1.0) - exp(-c * 1.18);
+  c = pow(max(c, vec3(0.0)), vec3(0.83)) * vign;
+  frag = vec4(clamp(c, 0.0, 1.0), 1.0);
+}`;
+
+const blurProgram = program(quadVertex, blurFragment);
+const finalProgram = program(quadVertex, finalFragment);
+const quadVAO = gl.createVertexArray();
+
+const uniforms = new Map();
+function loc(p, k) {
+  let m = uniforms.get(p);
+  if (!m) { m = {}; uniforms.set(p, m); }
+  if (!(k in m)) m[k] = gl.getUniformLocation(p, k);
+  return m[k];
+}
+function uniform(p, k, v) { gl.uniform1f(loc(p, k), v); }
+
+function target(w, h) {
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, HDR ? gl.RGBA16F : gl.RGBA8, w, h, 0, gl.RGBA, HDR ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const fbo = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw Error('Framebuffer unavailable');
+  return { tex, fbo, w, h };
+}
+
+let sceneRT, blurA, blurB;
+function resize(w, h) {
+  const clientW = canvas.clientWidth || window.innerWidth || 1024;
+  const clientH = canvas.clientHeight || window.innerHeight || 768;
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  w = Math.round(w || Math.min(1920, Math.max(64, clientW * dpr)));
+  h = Math.round(h || Math.max(48, clientH * dpr));
+  if (canvas.width === w && canvas.height === h && sceneRT) return;
+  canvas.width = w; canvas.height = h;
+  for (const rt of [sceneRT, blurA, blurB]) {
+    if (rt) { gl.deleteTexture(rt.tex); gl.deleteFramebuffer(rt.fbo); }
+  }
+  sceneRT = target(w, h);
+  blurA = target(Math.ceil(w / 2), Math.ceil(h / 2));
+  blurB = target(blurA.w, blurA.h);
+}
+
+function geometry(p, g, mode, t, isBox) {
+  gl.useProgram(p);
+  gl.bindVertexArray(g.vao);
+  const angle = (PARAMS.spin ? t * TAU / PARAMS.duration : 0) + PARAMS.manualYaw + 0.25;
+  const xOffset = PARAMS.codeVisible && window.innerWidth > 900 ? 0.70 : 0.0;
+  uniform(p, 'uTime', t);
+  uniform(p, 'uPeriod', PARAMS.duration);
+  uniform(p, 'uYaw', angle);
+  uniform(p, 'uPitch', PARAMS.cameraPitch + PARAMS.manualPitch);
+  uniform(p, 'uDistance', PARAMS.cameraDistance);
+  uniform(p, 'uAspect', canvas.width / canvas.height);
+  uniform(p, 'uScale', canvas.height / 768);
+  uniform(p, 'uFlow', PARAMS.flow);
+  uniform(p, 'uXOffset', xOffset);
+  gl.uniform1i(loc(p, 'uBox'), isBox ? 1 : 0);
+
+  gl.uniform3fv(loc(p, 'uThemeCore'), curColors.core);
+  gl.uniform3fv(loc(p, 'uThemeMid'), curColors.mid);
+  gl.uniform3fv(loc(p, 'uThemeRim'), curColors.rim);
+  gl.uniform3fv(loc(p, 'uThemeSepal'), curColors.sepal);
+  gl.uniform3fv(loc(p, 'uThemeRibbon'), curColors.ribbon);
+  gl.uniform3fv(loc(p, 'uThemeBox'), curColors.box);
+
+  gl.drawArrays(mode, 0, g.count);
+}
+
+function blur(from, to, dx, dy, first) {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, to.fbo);
+  gl.viewport(0, 0, to.w, to.h);
+  gl.useProgram(blurProgram);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, from.tex);
+  gl.uniform1i(loc(blurProgram, 'image'), 0);
+  gl.uniform2f(loc(blurProgram, 'stepUV'), dx, dy);
+  gl.uniform1i(loc(blurProgram, 'firstPass'), first);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+function renderAt(t) {
+  updateThemeColors();
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, sceneRT.fbo);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.disable(gl.DEPTH_TEST);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+  gl.clearColor(0.003, 0.005, 0.004, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  if (PARAMS.box) {
+    geometry(linesProgram, boxGeometry, gl.LINES, t, true);
+    geometry(pointsProgram, boxDotsGeometry, gl.POINTS, t, true);
+  }
+  geometry(pointsProgram, pointGeometry, gl.POINTS, t, false);
+  geometry(linesProgram, threadGeometry, gl.LINES, t, false);
+
+  gl.disable(gl.BLEND);
+  gl.bindVertexArray(quadVAO);
+  blur(sceneRT, blurA, 1.5 / sceneRT.w, 0, 1);
+  blur(blurA, blurB, 0, 1.7 / blurA.h, 0);
+  blur(blurB, blurA, 2.1 / blurB.w, 0, 0);
+  blur(blurA, blurB, 0, 2.1 / blurA.h, 0);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.useProgram(finalProgram);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, sceneRT.tex);
+  gl.uniform1i(loc(finalProgram, 'scene'), 0);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, blurB.tex);
+  gl.uniform1i(loc(finalProgram, 'glow'), 1);
+  uniform(finalProgram, 'bloom', PARAMS.bloom);
+  uniform(finalProgram, 'exposure', PARAMS.exposure);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+let running = true, clock = 0, last = performance.now(), raf = 0;
+function tick(now) {
+  let dt = Math.min(0.1, (now - last) / 1000);
+  last = now;
+  if (!PARAMS.paused) clock += dt * PARAMS.speed;
+  renderAt(clock);
+  if (running) raf = requestAnimationFrame(tick);
+}
+
+resize();
+renderAt(0);
+if (running) raf = requestAnimationFrame(tick);
+
+window.addEventListener('resize', () => resize());
+
+// ==================== 5. Dynamic Status Tag & Interactions ====================
+function updateThemeActiveUI(key) {
+  document.querySelectorAll('.theme-item').forEach(el => {
+    const oc = el.getAttribute('onclick') || '';
+    el.classList.toggle('active', oc.includes(`'${key}'`) || oc.includes(`"${key}"`));
+  });
+}
+
+function updateStyleActiveUI(styleKey) {
+  document.querySelectorAll('.style-item').forEach(el => {
+    const oc = el.getAttribute('onclick') || '';
+    el.classList.toggle('active', oc.includes(`'${styleKey}'`) || oc.includes(`"${styleKey}"`));
+  });
+}
+
+function updateStatusTag() {
+  const theme = THEMES[currentThemeKey];
+  const style = STYLES[currentStyleKey];
+  const tag = document.getElementById('status-tag');
+  if (tag && theme && style) {
+    tag.textContent = `${theme.icon} ${theme.name} · ${style.icon} ${style.name} | Press C to Color · V to Flower`;
+    tag.style.transition = 'none';
+    tag.style.color = '#fff';
+    tag.style.textShadow = '0 0 10px rgba(135,183,255,0.9)';
+    setTimeout(() => {
+      tag.style.transition = 'color 0.8s ease, text-shadow 0.8s ease';
+      tag.style.color = '#7a889b';
+      tag.style.textShadow = 'none';
+    }, 80);
+  }
+}
+
+window.setTheme = function(key) {
+  if (THEMES[key]) {
+    currentThemeKey = key;
+    updateThemeActiveUI(key);
+    updateStatusTag();
+  }
+};
+
+window.setStyle = function(styleKey) {
+  if (!STYLES[styleKey]) return;
+  currentStyleKey = styleKey;
+  PARAMS.cameraPitch = STYLES[styleKey].pitch;
+  PARAMS.cameraDistance = STYLES[styleKey].dist;
+
+  updateStyleActiveUI(styleKey);
+  updateStatusTag();
+
+  const newGeo = generateSceneGeometry(styleKey);
+  upload(newGeo.particles, pointGeometry.vao, pointGeometry.buffer);
+  pointGeometry.count = newGeo.particles.length / 10;
+  upload(newGeo.threads, threadGeometry.vao, threadGeometry.buffer);
+  threadGeometry.count = newGeo.threads.length / 10;
+};
+
+function cycleTheme() {
+  const keys = Object.keys(THEMES);
+  const nextIdx = (keys.indexOf(currentThemeKey) + 1) % keys.length;
+  window.setTheme(keys[nextIdx]);
+}
+
+function cycleStyle() {
+  const styles = Object.keys(STYLES);
+  const nextIdx = (styles.indexOf(currentStyleKey) + 1) % styles.length;
+  window.setStyle(styles[nextIdx]);
+}
+
+const $ = id => document.getElementById(id);
+
+$('theme-btn').onclick = () => {
+  const m = $('theme-menu');
+  m.style.display = m.style.display === 'block' ? 'none' : 'block';
+  $('style-menu').style.display = 'none';
+  $('settings').style.display = 'none';
+};
+
+$('style-btn').onclick = () => {
+  const m = $('style-menu');
+  m.style.display = m.style.display === 'block' ? 'none' : 'block';
+  $('theme-menu').style.display = 'none';
+  $('settings').style.display = 'none';
+};
+
+$('options').onclick = () => {
+  const m = $('settings');
+  m.style.display = m.style.display === 'block' ? 'none' : 'block';
+  $('theme-menu').style.display = 'none';
+  $('style-menu').style.display = 'none';
+};
+
+$('play').onclick = () => {
+  PARAMS.paused = !PARAMS.paused;
+  $('play').textContent = PARAMS.paused ? 'Play' : 'Pause';
+  $('play').classList.toggle('active', PARAMS.paused);
+};
+
+$('spin').onclick = () => {
+  PARAMS.spin = !PARAMS.spin;
+  $('spin').classList.toggle('active', PARAMS.spin);
+};
+
+$('box').onclick = () => {
+  PARAMS.box = !PARAMS.box;
+  $('box').classList.toggle('active', PARAMS.box);
+};
+
+$('code-btn').onclick = () => {
+  PARAMS.codeVisible = !PARAMS.codeVisible;
+  $('code-panel').classList.toggle('collapsed', !PARAMS.codeVisible);
+  $('code-btn').classList.toggle('active', PARAMS.codeVisible);
+};
+
+function toggleFullScreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+    $('fullscreen-btn').textContent = '⛶ Exit Fullscreen';
+  } else {
+    document.exitFullscreen().catch(() => {});
+    $('fullscreen-btn').textContent = '⛶ Fullscreen';
+  }
+}
+$('fullscreen-btn').onclick = toggleFullScreen;
+
+for (let id of ['speed', 'flow', 'bloom', 'exposure']) {
+  $(id).oninput = e => {
+    PARAMS[id] = +e.target.value;
+    e.target.nextElementSibling.value = (+e.target.value).toFixed(2);
+  };
+}
+$('scroll-speed').oninput = e => {
+  scrollSpeed = (+e.target.value) * 0.55;
+  $('scroll-speed').nextElementSibling.value = (+e.target.value).toFixed(2);
+};
+
+$('snapshot').onclick = () => {
+  renderAt(clock);
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `particle-flower-${currentThemeKey}-${currentStyleKey}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }, 'image/png');
+};
+
+window.addEventListener('keydown', e => {
+  const isEditing = e.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName);
+  if (isEditing) return;
+
+  if (e.code === 'Space') {
+    e.preventDefault(); $('play').click();
+  }
+  if (e.code === 'KeyC' || e.key === 'c' || e.key === 'C') {
+    cycleTheme();
+  }
+  if (e.code === 'KeyV' || e.key === 'v' || e.key === 'V') {
+    cycleStyle();
+  }
+  if (e.code === 'KeyS' || e.key === 's' || e.key === 'S') {
+    toggleScrollState();
+  }
+  if (e.code === 'KeyB' || e.key === 'b' || e.key === 'B') {
+    $('box').click();
+  }
+  if (e.code === 'KeyT' || e.key === 't' || e.key === 'T') {
+    $('code-btn').click();
+  }
+  if (e.code === 'KeyF' || e.code === 'F11' || e.key === 'f' || e.key === 'F') {
+    e.preventDefault(); toggleFullScreen();
+  }
+  if (e.code === 'KeyH' || e.key === 'h' || e.key === 'H') {
+    document.body.classList.toggle('quiet');
+  }
+});
+
+let pointer = null;
+canvas.addEventListener('pointerdown', e => {
+  pointer = { x: e.clientX, y: e.clientY };
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => {
+  if (pointer) {
+    PARAMS.manualYaw += (e.clientX - pointer.x) * 0.006;
+    PARAMS.manualPitch = clamp(PARAMS.manualPitch + (e.clientY - pointer.y) * 0.004, -0.65, 0.65);
+    pointer = { x: e.clientX, y: e.clientY };
+  }
+});
+canvas.addEventListener('pointerup', () => pointer = null);
+canvas.addEventListener('pointercancel', () => pointer = null);
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  PARAMS.cameraDistance = clamp(PARAMS.cameraDistance + e.deltaY * 0.003, 5.0, 12);
+}, { passive: false });
+
+let idle;
+document.addEventListener('pointermove', () => {
+  document.body.classList.remove('quiet');
+  clearTimeout(idle);
+  idle = setTimeout(() => {
+    if ($('settings').style.display !== 'block' && $('theme-menu').style.display !== 'block' && $('style-menu').style.display !== 'block') {
+      document.body.classList.add('quiet');
+    }
+  }, 5000);
+});
+idle = setTimeout(() => document.body.classList.add('quiet'), 5500);
+</script>
+</body>
+</html>

@@ -1,0 +1,857 @@
+<div class="line"><span class="ln">1</span><span class="cl"><span class="kw">import</span> <span class="var">tkinter</span> <span class="kw">as</span> <span class="var">tk</span>
+</span></div>
+<div class="line"><span class="ln">2</span><span class="cl"><span class="kw">import</span> <span class="bi">math</span>
+</span></div>
+<div class="line"><span class="ln">3</span><span class="cl"><span class="kw">import</span> <span class="bi">random</span>
+</span></div>
+<div class="line"><span class="ln">4</span><span class="cl"><span class="kw">import</span> <span class="bi">time</span>
+</span></div>
+<div class="line"><span class="ln">5</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">6</span><span class="cl"><span class="cm"># ==================== 1. 窗口配置与全局参数 ====================</span>
+</span></div>
+<div class="line"><span class="ln">7</span><span class="cl"><span class="var">WIDTH</span><span class="op">,</span> <span class="var">HEIGHT</span> <span class="op">=</span> <span class="num">980</span><span class="op">,</span> <span class="num">800</span>
+</span></div>
+<div class="line"><span class="ln">8</span><span class="cl"><span class="var">FOV</span> <span class="op">=</span> <span class="num">440</span>              <span class="cm"># 3D 投影视距</span>
+</span></div>
+<div class="line"><span class="ln">9</span><span class="cl"><span class="var">CUBE_SIZE</span> <span class="op">=</span> <span class="num">145</span>        <span class="cm"># 3D 立方体线框半长</span>
+</span></div>
+<div class="line"><span class="ln">10</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">11</span><span class="cl"><span class="cm"># 配色主题</span>
+</span></div>
+<div class="line"><span class="ln">12</span><span class="cl"><span class="var">PALETTES</span> <span class="op">=</span> <span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">13</span><span class="cl">    <span class="str">&quot;ruby_rose&quot;</span><span class="op">:</span> <span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">14</span><span class="cl">        <span class="str">&quot;name&quot;</span><span class="op">:</span> <span class="str">&quot;极品红玫 (热烈浪漫)&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">15</span><span class="cl">        <span class="str">&quot;edge&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ffebee&quot;</span><span class="op">,</span> <span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#ffcdd2&quot;</span><span class="op">,</span> <span class="str">&quot;#ff80ab&quot;</span><span class="op">]</span><span class="op">,</span>      <span class="cm"># 花瓣边缘轮廓发光</span>
+</span></div>
+<div class="line"><span class="ln">16</span><span class="cl">        <span class="str">&quot;petal_high&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ff1744&quot;</span><span class="op">,</span> <span class="str">&quot;#ff2a55&quot;</span><span class="op">,</span> <span class="str">&quot;#ff5252&quot;</span><span class="op">,</span> <span class="str">&quot;#f50057&quot;</span><span class="op">]</span><span class="op">,</span><span class="cm"># 花瓣向光面</span>
+</span></div>
+<div class="line"><span class="ln">17</span><span class="cl">        <span class="str">&quot;petal_mid&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#d50000&quot;</span><span class="op">,</span> <span class="str">&quot;#c51162&quot;</span><span class="op">,</span> <span class="str">&quot;#e91e63&quot;</span><span class="op">,</span> <span class="str">&quot;#ad1457&quot;</span><span class="op">]</span><span class="op">,</span> <span class="cm"># 花瓣主体</span>
+</span></div>
+<div class="line"><span class="ln">18</span><span class="cl">        <span class="str">&quot;petal_dark&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#880e4f&quot;</span><span class="op">,</span> <span class="str">&quot;#4a001f&quot;</span><span class="op">,</span> <span class="str">&quot;#5c001e&quot;</span><span class="op">,</span> <span class="str">&quot;#3a0010&quot;</span><span class="op">]</span><span class="op">,</span><span class="cm"># 花瓣阴影/基底</span>
+</span></div>
+<div class="line"><span class="ln">19</span><span class="cl">        <span class="str">&quot;core&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#fff9c4&quot;</span><span class="op">,</span> <span class="str">&quot;#fff59d&quot;</span><span class="op">,</span> <span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#ffe082&quot;</span><span class="op">]</span><span class="op">,</span>      <span class="cm"># 花蕊金黄微光</span>
+</span></div>
+<div class="line"><span class="ln">20</span><span class="cl">        <span class="str">&quot;sepal&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#2e7d32&quot;</span><span class="op">,</span> <span class="str">&quot;#4caf50&quot;</span><span class="op">,</span> <span class="str">&quot;#388e3c&quot;</span><span class="op">,</span> <span class="str">&quot;#1b5e20&quot;</span><span class="op">]</span><span class="op">,</span>     <span class="cm"># 萼片翠绿</span>
+</span></div>
+<div class="line"><span class="ln">21</span><span class="cl">        <span class="str">&quot;stem&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#1b5e20&quot;</span><span class="op">,</span> <span class="str">&quot;#2e7d32&quot;</span><span class="op">,</span> <span class="str">&quot;#144217&quot;</span><span class="op">,</span> <span class="str">&quot;#0d2b10&quot;</span><span class="op">]</span><span class="op">,</span>      <span class="cm"># 花茎深绿</span>
+</span></div>
+<div class="line"><span class="ln">22</span><span class="cl">        <span class="str">&quot;cube&quot;</span><span class="op">:</span> <span class="str">&quot;#405878&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">23</span><span class="cl">        <span class="str">&quot;bg&quot;</span><span class="op">:</span> <span class="str">&quot;#070913&quot;</span>
+</span></div>
+<div class="line"><span class="ln">24</span><span class="cl">    <span class="op">}</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">25</span><span class="cl">    <span class="str">&quot;pink_diamond&quot;</span><span class="op">:</span> <span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">26</span><span class="cl">        <span class="str">&quot;name&quot;</span><span class="op">:</span> <span class="str">&quot;粉钻甜心 (娇艳柔美)&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">27</span><span class="cl">        <span class="str">&quot;edge&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#fff0f3&quot;</span><span class="op">,</span> <span class="str">&quot;#ffd6e0&quot;</span><span class="op">,</span> <span class="str">&quot;#ffccd5&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">28</span><span class="cl">        <span class="str">&quot;petal_high&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ff758f&quot;</span><span class="op">,</span> <span class="str">&quot;#ff8fa3&quot;</span><span class="op">,</span> <span class="str">&quot;#ffb3c1&quot;</span><span class="op">,</span> <span class="str">&quot;#ff4d6d&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">29</span><span class="cl">        <span class="str">&quot;petal_mid&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#c9184a&quot;</span><span class="op">,</span> <span class="str">&quot;#a4133c&quot;</span><span class="op">,</span> <span class="str">&quot;#ff4d6d&quot;</span><span class="op">,</span> <span class="str">&quot;#d90429&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">30</span><span class="cl">        <span class="str">&quot;petal_dark&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#590d22&quot;</span><span class="op">,</span> <span class="str">&quot;#800f2f&quot;</span><span class="op">,</span> <span class="str">&quot;#400817&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">31</span><span class="cl">        <span class="str">&quot;core&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#fff0f3&quot;</span><span class="op">,</span> <span class="str">&quot;#ffccd5&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">32</span><span class="cl">        <span class="str">&quot;sepal&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#388e3c&quot;</span><span class="op">,</span> <span class="str">&quot;#4caf50&quot;</span><span class="op">,</span> <span class="str">&quot;#2e7d32&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">33</span><span class="cl">        <span class="str">&quot;stem&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#1b5e20&quot;</span><span class="op">,</span> <span class="str">&quot;#2e7d32&quot;</span><span class="op">,</span> <span class="str">&quot;#144217&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">34</span><span class="cl">        <span class="str">&quot;cube&quot;</span><span class="op">:</span> <span class="str">&quot;#68507b&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">35</span><span class="cl">        <span class="str">&quot;bg&quot;</span><span class="op">:</span> <span class="str">&quot;#0c0814&quot;</span>
+</span></div>
+<div class="line"><span class="ln">36</span><span class="cl">    <span class="op">}</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">37</span><span class="cl">    <span class="str">&quot;blue_enchantress&quot;</span><span class="op">:</span> <span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">38</span><span class="cl">        <span class="str">&quot;name&quot;</span><span class="op">:</span> <span class="str">&quot;蓝色妖姬 (冷艳极光)&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">39</span><span class="cl">        <span class="str">&quot;edge&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#e0fbfc&quot;</span><span class="op">,</span> <span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#caf0f8&quot;</span><span class="op">,</span> <span class="str">&quot;#90e0ef&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">40</span><span class="cl">        <span class="str">&quot;petal_high&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#00b4d8&quot;</span><span class="op">,</span> <span class="str">&quot;#0077b6&quot;</span><span class="op">,</span> <span class="str">&quot;#48cae4&quot;</span><span class="op">,</span> <span class="str">&quot;#0096c7&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">41</span><span class="cl">        <span class="str">&quot;petal_mid&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#023e8a&quot;</span><span class="op">,</span> <span class="str">&quot;#03045e&quot;</span><span class="op">,</span> <span class="str">&quot;#0077b6&quot;</span><span class="op">,</span> <span class="str">&quot;#1d3557&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">42</span><span class="cl">        <span class="str">&quot;petal_dark&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#050c1e&quot;</span><span class="op">,</span> <span class="str">&quot;#0b132b&quot;</span><span class="op">,</span> <span class="str">&quot;#1c2541&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">43</span><span class="cl">        <span class="str">&quot;core&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#e0fbfc&quot;</span><span class="op">,</span> <span class="str">&quot;#caf0f8&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">44</span><span class="cl">        <span class="str">&quot;sepal&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#1b4332&quot;</span><span class="op">,</span> <span class="str">&quot;#2d6a4f&quot;</span><span class="op">,</span> <span class="str">&quot;#40916c&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">45</span><span class="cl">        <span class="str">&quot;stem&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#081c15&quot;</span><span class="op">,</span> <span class="str">&quot;#1b4332&quot;</span><span class="op">,</span> <span class="str">&quot;#133c2a&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">46</span><span class="cl">        <span class="str">&quot;cube&quot;</span><span class="op">:</span> <span class="str">&quot;#3a6073&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">47</span><span class="cl">        <span class="str">&quot;bg&quot;</span><span class="op">:</span> <span class="str">&quot;#060913&quot;</span>
+</span></div>
+<div class="line"><span class="ln">48</span><span class="cl">    <span class="op">}</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">49</span><span class="cl">    <span class="str">&quot;golden_amber&quot;</span><span class="op">:</span> <span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">50</span><span class="cl">        <span class="str">&quot;name&quot;</span><span class="op">:</span> <span class="str">&quot;金珀华贵 (香槟流光)&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">51</span><span class="cl">        <span class="str">&quot;edge&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#fef9e7&quot;</span><span class="op">,</span> <span class="str">&quot;#fcf3cf&quot;</span><span class="op">,</span> <span class="str">&quot;#f9e79f&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">52</span><span class="cl">        <span class="str">&quot;petal_high&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#f1c40f&quot;</span><span class="op">,</span> <span class="str">&quot;#f39c12&quot;</span><span class="op">,</span> <span class="str">&quot;#f5b041&quot;</span><span class="op">,</span> <span class="str">&quot;#f8c471&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">53</span><span class="cl">        <span class="str">&quot;petal_mid&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#d4ac0d&quot;</span><span class="op">,</span> <span class="str">&quot;#b7950b&quot;</span><span class="op">,</span> <span class="str">&quot;#d68910&quot;</span><span class="op">,</span> <span class="str">&quot;#ba4a00&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">54</span><span class="cl">        <span class="str">&quot;petal_dark&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#784212&quot;</span><span class="op">,</span> <span class="str">&quot;#6e2c00&quot;</span><span class="op">,</span> <span class="str">&quot;#4d2800&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">55</span><span class="cl">        <span class="str">&quot;core&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#ffffff&quot;</span><span class="op">,</span> <span class="str">&quot;#fef9e7&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">56</span><span class="cl">        <span class="str">&quot;sepal&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#33691e&quot;</span><span class="op">,</span> <span class="str">&quot;#558b2f&quot;</span><span class="op">,</span> <span class="str">&quot;#2e7d32&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">57</span><span class="cl">        <span class="str">&quot;stem&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;#1b5e20&quot;</span><span class="op">,</span> <span class="str">&quot;#2e7d32&quot;</span><span class="op">,</span> <span class="str">&quot;#194d1c&quot;</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">58</span><span class="cl">        <span class="str">&quot;cube&quot;</span><span class="op">:</span> <span class="str">&quot;#6e5d38&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">59</span><span class="cl">        <span class="str">&quot;bg&quot;</span><span class="op">:</span> <span class="str">&quot;#0d0c07&quot;</span>
+</span></div>
+<div class="line"><span class="ln">60</span><span class="cl">    <span class="op">}</span>
+</span></div>
+<div class="line"><span class="ln">61</span><span class="cl"><span class="op">}</span>
+</span></div>
+<div class="line"><span class="ln">62</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">63</span><span class="cl"><span class="var">current_theme</span> <span class="op">=</span> <span class="str">&quot;ruby_rose&quot;</span>
+</span></div>
+<div class="line"><span class="ln">64</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">65</span><span class="cl"><span class="cm"># ==================== 2. 纯正数学 3D 玫瑰曲面点阵建模 ====================</span>
+</span></div>
+<div class="line"><span class="ln">66</span><span class="cl"><span class="kw">def</span> <span class="fn">generate_perfect_rose</span><span class="op">(</span><span class="var">total_points</span><span class="op">=</span><span class="num">4600</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">67</span><span class="cl">    <span class="str">&quot;&quot;&quot;
+    采用世界经典 3D 玫瑰参数曲面方程 (The Authentic 3D Rose Surface Equation)
+    精确计算花瓣卷曲螺旋、边缘褶皱、花托萼片与花茎
+    &quot;&quot;&quot;</span></span></div>
+<div class="line"><span class="ln">68</span><span class="cl">&nbsp;</span></div>
+<div class="line"><span class="ln">69</span><span class="cl">&nbsp;</span></div>
+<div class="line"><span class="ln">70</span><span class="cl">       
+</span></div>
+<div class="line"><span class="ln">71</span><span class="cl">    <span class="var">pal</span> <span class="op">=</span> <span class="var">PALETTES</span><span class="op">[</span><span class="var">current_theme</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">72</span><span class="cl">    <span class="var">particles</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">73</span><span class="cl">    
+</span></div>
+<div class="line"><span class="ln">74</span><span class="cl">    <span class="cm"># 1. 核心花瓣曲面采样 (约 72% 粒子)</span>
+</span></div>
+<div class="line"><span class="ln">75</span><span class="cl">    <span class="var">petal_points</span> <span class="op">=</span> <span class="bi">int</span><span class="op">(</span><span class="var">total_points</span> <span class="op">*</span> <span class="num">0.72</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">76</span><span class="cl">    <span class="kw">for</span> <span class="var">_</span> <span class="kw">in</span> <span class="bi">range</span><span class="op">(</span><span class="var">petal_points</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">77</span><span class="cl">        <span class="cm"># t 控制螺旋圈数与角度：从内侧花蕾到外层舒展大花瓣</span>
+</span></div>
+<div class="line"><span class="ln">78</span><span class="cl">        <span class="var">t_norm</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="num">1</span><span class="op">)</span> <span class="op">**</span> <span class="num">0.85</span>
+</span></div>
+<div class="line"><span class="ln">79</span><span class="cl">        <span class="var">t</span> <span class="op">=</span> <span class="var">t_norm</span> <span class="op">*</span> <span class="op">(</span><span class="num">20.0</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span><span class="op">)</span> <span class="op">+</span> <span class="num">3.8</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span>
+</span></div>
+<div class="line"><span class="ln">80</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">81</span><span class="cl">        <span class="cm"># p 控制花瓣从直立到外翻的俯仰倾角</span>
+</span></div>
+<div class="line"><span class="ln">82</span><span class="cl">        <span class="var">p</span> <span class="op">=</span> <span class="op">(</span><span class="bi">math</span><span class="op">.</span><span class="var">pi</span> <span class="op">/</span> <span class="num">2.0</span><span class="op">)</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">exp</span><span class="op">(</span><span class="op">-</span><span class="var">t</span> <span class="op">/</span> <span class="op">(</span><span class="num">8.0</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">83</span><span class="cl">        <span class="cm"># 边缘微波褶皱</span>
+</span></div>
+<div class="line"><span class="ln">84</span><span class="cl">        <span class="var">ripple</span> <span class="op">=</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="num">15.0</span> <span class="op">*</span> <span class="var">t</span><span class="op">)</span> <span class="op">/</span> <span class="num">140.0</span>
+</span></div>
+<div class="line"><span class="ln">85</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">86</span><span class="cl">        <span class="cm"># 每圈约 3.4 瓣花瓣，模运算营造自然的花瓣交叠重合</span>
+</span></div>
+<div class="line"><span class="ln">87</span><span class="cl">        <span class="var">mod_t</span> <span class="op">=</span> <span class="op">(</span><span class="num">3.4</span> <span class="op">*</span> <span class="var">t</span><span class="op">)</span> <span class="op">%</span> <span class="op">(</span><span class="num">2.0</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">88</span><span class="cl">        <span class="var">u_factor</span> <span class="op">=</span> <span class="num">1.0</span> <span class="op">-</span> <span class="op">(</span><span class="op">(</span><span class="num">1.0</span> <span class="op">-</span> <span class="var">mod_t</span> <span class="op">/</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span><span class="op">)</span> <span class="op">**</span> <span class="num">4</span><span class="op">)</span> <span class="op">/</span> <span class="num">2.0</span> <span class="op">+</span> <span class="var">ripple</span>
+</span></div>
+<div class="line"><span class="ln">89</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">90</span><span class="cl">        <span class="cm"># x 为花瓣径向位置：0 为花瓣根部，1 为花瓣边缘</span>
+</span></div>
+<div class="line"><span class="ln">91</span><span class="cl">        <span class="cm"># 增加边缘采样概率，让花瓣优美的边缘轮廓清晰可辨！</span>
+</span></div>
+<div class="line"><span class="ln">92</span><span class="cl">        <span class="kw">if</span> <span class="bi">random</span><span class="op">.</span><span class="bi">random</span><span class="op">(</span><span class="op">)</span> <span class="op">&lt;</span><span class="num">0.35</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">93</span><span class="cl">            <span class="var">x</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0.85</span><span class="op">,</span> <span class="num">1.0</span><span class="op">)</span>  <span class="cm"># 强化边缘线条！</span>
+</span></div>
+<div class="line"><span class="ln">94</span><span class="cl">            <span class="var">is_edge</span> <span class="op">=</span> <span class="kw">True</span>
+</span></div>
+<div class="line"><span class="ln">95</span><span class="cl">        <span class="kw">else</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">96</span><span class="cl">            <span class="var">x</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0.08</span><span class="op">,</span> <span class="num">0.95</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">97</span><span class="cl">            <span class="var">is_edge</span> <span class="op">=</span> <span class="kw">False</span>
+</span></div>
+<div class="line"><span class="ln">98</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">99</span><span class="cl">        <span class="cm"># y profile 形成花瓣杯状凹陷弧度</span>
+</span></div>
+<div class="line"><span class="ln">100</span><span class="cl">        <span class="var">y_prof</span> <span class="op">=</span> <span class="num">2.0</span> <span class="op">*</span> <span class="op">(</span><span class="var">x</span><span class="op">**</span><span class="num">2</span> <span class="op">-</span> <span class="var">x</span><span class="op">)</span> <span class="op">**</span> <span class="num">2</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">p</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">101</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">102</span><span class="cl">        <span class="var">r</span> <span class="op">=</span> <span class="var">u_factor</span> <span class="op">*</span> <span class="op">(</span><span class="var">x</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">p</span><span class="op">)</span> <span class="op">+</span> <span class="var">y_prof</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">p</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">103</span><span class="cl">        <span class="var">h</span> <span class="op">=</span> <span class="var">u_factor</span> <span class="op">*</span> <span class="op">(</span><span class="var">x</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">p</span><span class="op">)</span> <span class="op">-</span> <span class="var">y_prof</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">p</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">104</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">105</span><span class="cl">        <span class="var">scale</span> <span class="op">=</span> <span class="num">138.0</span>
+</span></div>
+<div class="line"><span class="ln">106</span><span class="cl">        <span class="cm"># 3D 空间坐标转换 (Y 向上，X/Z 展开)</span>
+</span></div>
+<div class="line"><span class="ln">107</span><span class="cl">        <span class="var">base_x</span> <span class="op">=</span> <span class="var">r</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">t</span><span class="op">)</span> <span class="op">*</span> <span class="var">scale</span>
+</span></div>
+<div class="line"><span class="ln">108</span><span class="cl">        <span class="var">base_z</span> <span class="op">=</span> <span class="var">r</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">t</span><span class="op">)</span> <span class="op">*</span> <span class="var">scale</span>
+</span></div>
+<div class="line"><span class="ln">109</span><span class="cl">        <span class="var">base_y</span> <span class="op">=</span> <span class="op">(</span><span class="var">h</span> <span class="op">*</span> <span class="var">scale</span><span class="op">)</span> <span class="op">-</span> <span class="num">20.0</span>
+</span></div>
+<div class="line"><span class="ln">110</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">111</span><span class="cl">        <span class="cm"># 确定着色</span>
+</span></div>
+<div class="line"><span class="ln">112</span><span class="cl">        <span class="var">dist_c</span> <span class="op">=</span> <span class="bi">math</span><span class="op">.</span><span class="var">sqrt</span><span class="op">(</span><span class="var">base_x</span><span class="op">**</span><span class="num">2</span> <span class="op">+</span> <span class="var">base_z</span><span class="op">**</span><span class="num">2</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">113</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">114</span><span class="cl">        <span class="kw">if</span> <span class="var">is_edge</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">115</span><span class="cl">            <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;edge&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">116</span><span class="cl">            <span class="var">size</span> <span class="op">=</span> <span class="num">2</span> <span class="kw">if</span> <span class="bi">random</span><span class="op">.</span><span class="bi">random</span><span class="op">(</span><span class="op">)</span> <span class="op">&lt;</span><span class="num">0.4</span> <span class="kw">else</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">117</span><span class="cl">        <span class="kw">elif</span> <span class="var">dist_c</span> <span class="op">&lt;</span><span class="num">24</span> <span class="kw">and</span> <span class="var">base_y</span> <span class="op">&gt;</span><span class="op">-</span><span class="num">10</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">118</span><span class="cl">            <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;core&quot;</span><span class="op">]</span><span class="op">)</span>  <span class="cm"># 黄金花心</span>
+</span></div>
+<div class="line"><span class="ln">119</span><span class="cl">            <span class="var">size</span> <span class="op">=</span> <span class="num">2</span> <span class="kw">if</span> <span class="bi">random</span><span class="op">.</span><span class="bi">random</span><span class="op">(</span><span class="op">)</span> <span class="op">&lt;</span><span class="num">0.3</span> <span class="kw">else</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">120</span><span class="cl">        <span class="kw">elif</span> <span class="var">dist_c</span> <span class="op">&lt;</span><span class="num">65</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">121</span><span class="cl">            <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;petal_high&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">122</span><span class="cl">            <span class="var">size</span> <span class="op">=</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">123</span><span class="cl">        <span class="kw">elif</span> <span class="var">x</span> <span class="op">&lt;</span><span class="num">0.35</span> <span class="kw">or</span> <span class="var">base_y</span> <span class="op">&lt;</span><span class="op">-</span><span class="num">15</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">124</span><span class="cl">            <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;petal_dark&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">125</span><span class="cl">            <span class="var">size</span> <span class="op">=</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">126</span><span class="cl">        <span class="kw">else</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">127</span><span class="cl">            <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;petal_mid&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">128</span><span class="cl">            <span class="var">size</span> <span class="op">=</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">129</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">130</span><span class="cl">        <span class="var">particles</span><span class="op">.</span><span class="var">append</span><span class="op">(</span><span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">131</span><span class="cl">            <span class="str">&quot;x&quot;</span><span class="op">:</span> <span class="var">base_x</span><span class="op">,</span> <span class="str">&quot;y&quot;</span><span class="op">:</span> <span class="var">base_y</span><span class="op">,</span> <span class="str">&quot;z&quot;</span><span class="op">:</span> <span class="var">base_z</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">132</span><span class="cl">            <span class="str">&quot;col&quot;</span><span class="op">:</span> <span class="var">col</span><span class="op">,</span> <span class="str">&quot;size&quot;</span><span class="op">:</span> <span class="var">size</span><span class="op">,</span> <span class="str">&quot;part&quot;</span><span class="op">:</span> <span class="str">&quot;petal&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">133</span><span class="cl">            <span class="str">&quot;phase&quot;</span><span class="op">:</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span> <span class="op">*</span> <span class="num">2</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">134</span><span class="cl">        <span class="op">}</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">135</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">136</span><span class="cl">    <span class="cm"># 2. 翠绿花托萼片与花茎 (约 20% 粒子)</span>
+</span></div>
+<div class="line"><span class="ln">137</span><span class="cl">    <span class="var">stem_points</span> <span class="op">=</span> <span class="bi">int</span><span class="op">(</span><span class="var">total_points</span> <span class="op">*</span> <span class="num">0.20</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">138</span><span class="cl">    <span class="kw">for</span> <span class="var">_</span> <span class="kw">in</span> <span class="bi">range</span><span class="op">(</span><span class="var">stem_points</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">139</span><span class="cl">        <span class="var">v</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="num">1</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">140</span><span class="cl">        <span class="var">theta</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="num">2</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">141</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">142</span><span class="cl">        <span class="kw">if</span> <span class="var">v</span> <span class="op">&lt;</span><span class="num">0.35</span><span class="op">:</span>  <span class="cm"># 萼片 (5片包裹在花底的自然绿萼)</span>
+</span></div>
+<div class="line"><span class="ln">143</span><span class="cl">            <span class="var">leaf_angle</span> <span class="op">=</span> <span class="var">theta</span> <span class="op">*</span> <span class="num">5.0</span>
+</span></div>
+<div class="line"><span class="ln">144</span><span class="cl">            <span class="var">r_sepal</span> <span class="op">=</span> <span class="op">(</span><span class="num">1.0</span> <span class="op">-</span> <span class="var">v</span> <span class="op">/</span> <span class="num">0.35</span><span class="op">)</span> <span class="op">*</span> <span class="num">55.0</span> <span class="op">*</span> <span class="op">(</span><span class="var">abs</span><span class="op">(</span><span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">leaf_angle</span><span class="op">)</span><span class="op">)</span> <span class="op">**</span> <span class="num">0.6</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">145</span><span class="cl">            <span class="var">base_x</span> <span class="op">=</span> <span class="var">r_sepal</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">theta</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">146</span><span class="cl">            <span class="var">base_z</span> <span class="op">=</span> <span class="var">r_sepal</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">theta</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">147</span><span class="cl">            <span class="var">base_y</span> <span class="op">=</span> <span class="op">-</span><span class="num">22.0</span> <span class="op">-</span> <span class="var">v</span> <span class="op">*</span> <span class="num">35.0</span>
+</span></div>
+<div class="line"><span class="ln">148</span><span class="cl">            <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;sepal&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">149</span><span class="cl">            <span class="var">size</span> <span class="op">=</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">150</span><span class="cl">        <span class="kw">else</span><span class="op">:</span>  <span class="cm"># 花茎 (微微弯曲的自然枝干)</span>
+</span></div>
+<div class="line"><span class="ln">151</span><span class="cl">            <span class="var">t_stem</span> <span class="op">=</span> <span class="op">(</span><span class="var">v</span> <span class="op">-</span> <span class="num">0.35</span><span class="op">)</span> <span class="op">/</span> <span class="num">0.65</span>
+</span></div>
+<div class="line"><span class="ln">152</span><span class="cl">            <span class="var">r_stem</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">2.5</span><span class="op">,</span> <span class="num">6.0</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">153</span><span class="cl">            <span class="var">bend_x</span> <span class="op">=</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">t_stem</span> <span class="op">*</span> <span class="num">3.5</span><span class="op">)</span> <span class="op">*</span> <span class="num">10.0</span>
+</span></div>
+<div class="line"><span class="ln">154</span><span class="cl">            <span class="var">bend_z</span> <span class="op">=</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">t_stem</span> <span class="op">*</span> <span class="num">2.8</span><span class="op">)</span> <span class="op">*</span> <span class="num">6.0</span>
+</span></div>
+<div class="line"><span class="ln">155</span><span class="cl">            <span class="var">base_x</span> <span class="op">=</span> <span class="var">r_stem</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">theta</span><span class="op">)</span> <span class="op">+</span> <span class="var">bend_x</span>
+</span></div>
+<div class="line"><span class="ln">156</span><span class="cl">            <span class="var">base_z</span> <span class="op">=</span> <span class="var">r_stem</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">theta</span><span class="op">)</span> <span class="op">+</span> <span class="var">bend_z</span>
+</span></div>
+<div class="line"><span class="ln">157</span><span class="cl">            <span class="var">base_y</span> <span class="op">=</span> <span class="op">-</span><span class="num">35.0</span> <span class="op">-</span> <span class="var">t_stem</span> <span class="op">*</span> <span class="num">95.0</span>
+</span></div>
+<div class="line"><span class="ln">158</span><span class="cl">            <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;stem&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">159</span><span class="cl">            <span class="var">size</span> <span class="op">=</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">160</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">161</span><span class="cl">        <span class="var">particles</span><span class="op">.</span><span class="var">append</span><span class="op">(</span><span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">162</span><span class="cl">            <span class="str">&quot;x&quot;</span><span class="op">:</span> <span class="var">base_x</span><span class="op">,</span> <span class="str">&quot;y&quot;</span><span class="op">:</span> <span class="var">base_y</span><span class="op">,</span> <span class="str">&quot;z&quot;</span><span class="op">:</span> <span class="var">base_z</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">163</span><span class="cl">            <span class="str">&quot;col&quot;</span><span class="op">:</span> <span class="var">col</span><span class="op">,</span> <span class="str">&quot;size&quot;</span><span class="op">:</span> <span class="var">size</span><span class="op">,</span> <span class="str">&quot;part&quot;</span><span class="op">:</span> <span class="str">&quot;stem&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">164</span><span class="cl">            <span class="str">&quot;phase&quot;</span><span class="op">:</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span> <span class="op">*</span> <span class="num">2</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">165</span><span class="cl">        <span class="op">}</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">166</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">167</span><span class="cl">    <span class="cm"># 3. 周围弥漫的浪漫光斑 / 星尘 (约 8% 粒子)</span>
+</span></div>
+<div class="line"><span class="ln">168</span><span class="cl">    <span class="var">ember_points</span> <span class="op">=</span> <span class="bi">int</span><span class="op">(</span><span class="var">total_points</span> <span class="op">*</span> <span class="num">0.08</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">169</span><span class="cl">    <span class="kw">for</span> <span class="var">_</span> <span class="kw">in</span> <span class="bi">range</span><span class="op">(</span><span class="var">ember_points</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">170</span><span class="cl">        <span class="var">rx</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="var">CUBE_SIZE</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">171</span><span class="cl">        <span class="var">ry</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="var">CUBE_SIZE</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">172</span><span class="cl">        <span class="var">rz</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="var">CUBE_SIZE</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">173</span><span class="cl">        <span class="var">col</span> <span class="op">=</span> <span class="bi">random</span><span class="op">.</span><span class="var">choice</span><span class="op">(</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;edge&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">174</span><span class="cl">        <span class="var">particles</span><span class="op">.</span><span class="var">append</span><span class="op">(</span><span class="op">{</span>
+</span></div>
+<div class="line"><span class="ln">175</span><span class="cl">            <span class="str">&quot;x&quot;</span><span class="op">:</span> <span class="var">rx</span><span class="op">,</span> <span class="str">&quot;y&quot;</span><span class="op">:</span> <span class="var">ry</span><span class="op">,</span> <span class="str">&quot;z&quot;</span><span class="op">:</span> <span class="var">rz</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">176</span><span class="cl">            <span class="str">&quot;col&quot;</span><span class="op">:</span> <span class="var">col</span><span class="op">,</span> <span class="str">&quot;size&quot;</span><span class="op">:</span> <span class="num">1</span><span class="op">,</span> <span class="str">&quot;part&quot;</span><span class="op">:</span> <span class="str">&quot;ember&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">177</span><span class="cl">            <span class="str">&quot;phase&quot;</span><span class="op">:</span> <span class="bi">random</span><span class="op">.</span><span class="var">uniform</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="bi">math</span><span class="op">.</span><span class="var">pi</span> <span class="op">*</span> <span class="num">2</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">178</span><span class="cl">        <span class="op">}</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">179</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">180</span><span class="cl">    <span class="kw">return</span> <span class="var">particles</span>
+</span></div>
+<div class="line"><span class="ln">181</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">182</span><span class="cl"><span class="cm"># 3D 线框立方体</span>
+</span></div>
+<div class="line"><span class="ln">183</span><span class="cl"><span class="var">CUBE_VERTICES</span> <span class="op">=</span> <span class="op">[</span>
+</span></div>
+<div class="line"><span class="ln">184</span><span class="cl">    <span class="op">[</span><span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">185</span><span class="cl">    <span class="op">[</span> <span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">186</span><span class="cl">    <span class="op">[</span> <span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">187</span><span class="cl">    <span class="op">[</span><span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">188</span><span class="cl">    <span class="op">[</span><span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">189</span><span class="cl">    <span class="op">[</span> <span class="var">CUBE_SIZE</span><span class="op">,</span> <span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">190</span><span class="cl">    <span class="op">[</span> <span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">191</span><span class="cl">    <span class="op">[</span><span class="op">-</span><span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">,</span>  <span class="var">CUBE_SIZE</span><span class="op">]</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">192</span><span class="cl"><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">193</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">194</span><span class="cl"><span class="var">CUBE_EDGES</span> <span class="op">=</span> <span class="op">[</span>
+</span></div>
+<div class="line"><span class="ln">195</span><span class="cl">    <span class="op">(</span><span class="num">0</span><span class="op">,</span><span class="num">1</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">1</span><span class="op">,</span><span class="num">2</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">2</span><span class="op">,</span><span class="num">3</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">3</span><span class="op">,</span><span class="num">0</span><span class="op">)</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">196</span><span class="cl">    <span class="op">(</span><span class="num">4</span><span class="op">,</span><span class="num">5</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">5</span><span class="op">,</span><span class="num">6</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">6</span><span class="op">,</span><span class="num">7</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">7</span><span class="op">,</span><span class="num">4</span><span class="op">)</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">197</span><span class="cl">    <span class="op">(</span><span class="num">0</span><span class="op">,</span><span class="num">4</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">1</span><span class="op">,</span><span class="num">5</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">2</span><span class="op">,</span><span class="num">6</span><span class="op">)</span><span class="op">,</span> <span class="op">(</span><span class="num">3</span><span class="op">,</span><span class="num">7</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">198</span><span class="cl"><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">199</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">200</span><span class="cl"><span class="cm"># ==================== 3. 应用程序窗口与实时渲染 ====================</span>
+</span></div>
+<div class="line"><span class="ln">201</span><span class="cl"><span class="kw">class</span> <span class="cls">PerfectRoseApp</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">202</span><span class="cl">    <span class="kw">def</span> <span class="fn">__init__</span><span class="op">(</span><span class="self">self</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">203</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span> <span class="op">=</span> <span class="var">tk</span><span class="op">.</span><span class="var">Tk</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">204</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">title</span><span class="op">(</span><span class="str">&quot;3D 完美数学玫瑰 · 绽放星盒 (The Perfect Mathematical Rose)&quot;</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">205</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">geometry</span><span class="op">(</span>f&quot;<span class="op">{</span><span class="var">WIDTH</span><span class="op">}</span>x<span class="op">{</span><span class="var">HEIGHT</span><span class="op">}</span>&quot;<span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">206</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">207</span><span class="cl">        <span class="var">pal</span> <span class="op">=</span> <span class="var">PALETTES</span><span class="op">[</span><span class="var">current_theme</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">208</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">configure</span><span class="op">(</span><span class="var">bg</span><span class="op">=</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;bg&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">209</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">210</span><span class="cl">        <span class="cm"># 弹窗置顶至前台</span>
+</span></div>
+<div class="line"><span class="ln">211</span><span class="cl">        <span class="kw">try</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">212</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">lift</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">213</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">attributes</span><span class="op">(</span><span class="str">&quot;-topmost&quot;</span><span class="op">,</span> <span class="kw">True</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">214</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">after</span><span class="op">(</span><span class="num">600</span><span class="op">,</span> <span class="kw">lambda</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">attributes</span><span class="op">(</span><span class="str">&quot;-topmost&quot;</span><span class="op">,</span> <span class="kw">False</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">215</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">focus_force</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">216</span><span class="cl">        <span class="kw">except</span> <span class="var">Exception</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">217</span><span class="cl">            <span class="kw">pass</span>
+</span></div>
+<div class="line"><span class="ln">218</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">219</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span> <span class="op">=</span> <span class="var">tk</span><span class="op">.</span><span class="var">Canvas</span><span class="op">(</span><span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">,</span> <span class="var">width</span><span class="op">=</span><span class="var">WIDTH</span><span class="op">,</span> <span class="var">height</span><span class="op">=</span><span class="var">HEIGHT</span><span class="op">,</span> <span class="var">bg</span><span class="op">=</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;bg&quot;</span><span class="op">]</span><span class="op">,</span> <span class="var">highlightthickness</span><span class="op">=</span><span class="num">0</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">220</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">pack</span><span class="op">(</span><span class="var">fill</span><span class="op">=</span><span class="var">tk</span><span class="op">.</span><span class="var">BOTH</span><span class="op">,</span> <span class="var">expand</span><span class="op">=</span><span class="kw">True</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">221</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">222</span><span class="cl">        <span class="cm"># 3D 视角状态</span>
+</span></div>
+<div class="line"><span class="ln">223</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">rot_x</span> <span class="op">=</span> <span class="num">0.45</span>    <span class="cm"># 俯视角度，完美展现花冠绽放弧度</span>
+</span></div>
+<div class="line"><span class="ln">224</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">rot_y</span> <span class="op">=</span> <span class="num">0.50</span>    <span class="cm"># 水平航向角</span>
+</span></div>
+<div class="line"><span class="ln">225</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">zoom</span> <span class="op">=</span> <span class="num">1.05</span>
+</span></div>
+<div class="line"><span class="ln">226</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">auto_rotate</span> <span class="op">=</span> <span class="kw">True</span>
+</span></div>
+<div class="line"><span class="ln">227</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">show_code</span> <span class="op">=</span> <span class="kw">True</span>
+</span></div>
+<div class="line"><span class="ln">228</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">is_running</span> <span class="op">=</span> <span class="kw">True</span>
+</span></div>
+<div class="line"><span class="ln">229</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">230</span><span class="cl">        <span class="cm"># 鼠标拖拽</span>
+</span></div>
+<div class="line"><span class="ln">231</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">last_mx</span> <span class="op">=</span> <span class="num">0</span>
+</span></div>
+<div class="line"><span class="ln">232</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">last_my</span> <span class="op">=</span> <span class="num">0</span>
+</span></div>
+<div class="line"><span class="ln">233</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">is_dragging</span> <span class="op">=</span> <span class="kw">False</span>
+</span></div>
+<div class="line"><span class="ln">234</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">235</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;ButtonPress-1&gt;&quot;</span><span class="op">,</span> <span class="self">self</span><span class="op">.</span><span class="var">on_mouse_down</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">236</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;B1-Motion&gt;&quot;</span><span class="op">,</span> <span class="self">self</span><span class="op">.</span><span class="var">on_mouse_drag</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">237</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;ButtonRelease-1&gt;&quot;</span><span class="op">,</span> <span class="self">self</span><span class="op">.</span><span class="var">on_mouse_up</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">238</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;space&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">toggle_rotate</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">239</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;c&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">switch_theme</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">240</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;C&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">switch_theme</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">241</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;t&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">toggle_code</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">242</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;T&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">toggle_code</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">243</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;plus&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">adjust_zoom</span><span class="op">(</span><span class="num">0.08</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">244</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;equal&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">adjust_zoom</span><span class="op">(</span><span class="num">0.08</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">245</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">bind</span><span class="op">(</span><span class="str">&quot;&lt;minus&gt;&quot;</span><span class="op">,</span> <span class="kw">lambda</span> <span class="var">e</span><span class="op">:</span> <span class="self">self</span><span class="op">.</span><span class="var">adjust_zoom</span><span class="op">(</span><span class="op">-</span><span class="num">0.08</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">246</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">protocol</span><span class="op">(</span><span class="str">&quot;WM_DELETE_WINDOW&quot;</span><span class="op">,</span> <span class="self">self</span><span class="op">.</span><span class="var">on_close</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">247</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">248</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">particles</span> <span class="op">=</span> <span class="var">generate_perfect_rose</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">249</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">start_time</span> <span class="op">=</span> <span class="bi">time</span><span class="op">.</span><span class="bi">time</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">250</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">251</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">render_loop</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">252</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">253</span><span class="cl">    <span class="kw">def</span> <span class="fn">adjust_zoom</span><span class="op">(</span><span class="self">self</span><span class="op">,</span> <span class="var">delta</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">254</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">zoom</span> <span class="op">=</span> <span class="var">max</span><span class="op">(</span><span class="num">0.5</span><span class="op">,</span> <span class="var">min</span><span class="op">(</span><span class="num">2.5</span><span class="op">,</span> <span class="self">self</span><span class="op">.</span><span class="var">zoom</span> <span class="op">+</span> <span class="var">delta</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">255</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">256</span><span class="cl">    <span class="kw">def</span> <span class="fn">on_mouse_down</span><span class="op">(</span><span class="self">self</span><span class="op">,</span> <span class="var">event</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">257</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">is_dragging</span> <span class="op">=</span> <span class="kw">True</span>
+</span></div>
+<div class="line"><span class="ln">258</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">last_mx</span> <span class="op">=</span> <span class="var">event</span><span class="op">.</span><span class="var">x</span>
+</span></div>
+<div class="line"><span class="ln">259</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">last_my</span> <span class="op">=</span> <span class="var">event</span><span class="op">.</span><span class="var">y</span>
+</span></div>
+<div class="line"><span class="ln">260</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">261</span><span class="cl">    <span class="kw">def</span> <span class="fn">on_mouse_drag</span><span class="op">(</span><span class="self">self</span><span class="op">,</span> <span class="var">event</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">262</span><span class="cl">        <span class="kw">if</span> <span class="self">self</span><span class="op">.</span><span class="var">is_dragging</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">263</span><span class="cl">            <span class="var">dx</span> <span class="op">=</span> <span class="var">event</span><span class="op">.</span><span class="var">x</span> <span class="op">-</span> <span class="self">self</span><span class="op">.</span><span class="var">last_mx</span>
+</span></div>
+<div class="line"><span class="ln">264</span><span class="cl">            <span class="var">dy</span> <span class="op">=</span> <span class="var">event</span><span class="op">.</span><span class="var">y</span> <span class="op">-</span> <span class="self">self</span><span class="op">.</span><span class="var">last_my</span>
+</span></div>
+<div class="line"><span class="ln">265</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">rot_y</span> <span class="op">+=</span> <span class="var">dx</span> <span class="op">*</span> <span class="num">0.008</span>
+</span></div>
+<div class="line"><span class="ln">266</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">rot_x</span> <span class="op">-=</span> <span class="var">dy</span> <span class="op">*</span> <span class="num">0.008</span>
+</span></div>
+<div class="line"><span class="ln">267</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">last_mx</span> <span class="op">=</span> <span class="var">event</span><span class="op">.</span><span class="var">x</span>
+</span></div>
+<div class="line"><span class="ln">268</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">last_my</span> <span class="op">=</span> <span class="var">event</span><span class="op">.</span><span class="var">y</span>
+</span></div>
+<div class="line"><span class="ln">269</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">270</span><span class="cl">    <span class="kw">def</span> <span class="fn">on_mouse_up</span><span class="op">(</span><span class="self">self</span><span class="op">,</span> <span class="var">event</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">271</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">is_dragging</span> <span class="op">=</span> <span class="kw">False</span>
+</span></div>
+<div class="line"><span class="ln">272</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">273</span><span class="cl">    <span class="kw">def</span> <span class="fn">toggle_rotate</span><span class="op">(</span><span class="self">self</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">274</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">auto_rotate</span> <span class="op">=</span> <span class="kw">not</span> <span class="self">self</span><span class="op">.</span><span class="var">auto_rotate</span>
+</span></div>
+<div class="line"><span class="ln">275</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">276</span><span class="cl">    <span class="kw">def</span> <span class="fn">toggle_code</span><span class="op">(</span><span class="self">self</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">277</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">show_code</span> <span class="op">=</span> <span class="kw">not</span> <span class="self">self</span><span class="op">.</span><span class="var">show_code</span>
+</span></div>
+<div class="line"><span class="ln">278</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">279</span><span class="cl">    <span class="kw">def</span> <span class="fn">switch_theme</span><span class="op">(</span><span class="self">self</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">280</span><span class="cl">        <span class="kw">global</span> <span class="var">current_theme</span>
+</span></div>
+<div class="line"><span class="ln">281</span><span class="cl">        <span class="var">keys</span> <span class="op">=</span> <span class="var">list</span><span class="op">(</span><span class="var">PALETTES</span><span class="op">.</span><span class="var">keys</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">282</span><span class="cl">        <span class="var">idx</span> <span class="op">=</span> <span class="op">(</span><span class="var">keys</span><span class="op">.</span><span class="var">index</span><span class="op">(</span><span class="var">current_theme</span><span class="op">)</span> <span class="op">+</span> <span class="num">1</span><span class="op">)</span> <span class="op">%</span> <span class="bi">len</span><span class="op">(</span><span class="var">keys</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">283</span><span class="cl">        <span class="var">current_theme</span> <span class="op">=</span> <span class="var">keys</span><span class="op">[</span><span class="var">idx</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">284</span><span class="cl">        <span class="var">pal</span> <span class="op">=</span> <span class="var">PALETTES</span><span class="op">[</span><span class="var">current_theme</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">285</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">configure</span><span class="op">(</span><span class="var">bg</span><span class="op">=</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;bg&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">286</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">configure</span><span class="op">(</span><span class="var">bg</span><span class="op">=</span><span class="var">pal</span><span class="op">[</span><span class="str">&quot;bg&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">287</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">particles</span> <span class="op">=</span> <span class="var">generate_perfect_rose</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">288</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">289</span><span class="cl">    <span class="kw">def</span> <span class="fn">on_close</span><span class="op">(</span><span class="self">self</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">290</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">is_running</span> <span class="op">=</span> <span class="kw">False</span>
+</span></div>
+<div class="line"><span class="ln">291</span><span class="cl">        <span class="kw">try</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">292</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">destroy</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">293</span><span class="cl">        <span class="kw">except</span> <span class="var">Exception</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">294</span><span class="cl">            <span class="kw">pass</span>
+</span></div>
+<div class="line"><span class="ln">295</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">296</span><span class="cl">    <span class="kw">def</span> <span class="fn">project_3d</span><span class="op">(</span><span class="self">self</span><span class="op">,</span> <span class="var">x</span><span class="op">,</span> <span class="var">y</span><span class="op">,</span> <span class="var">z</span><span class="op">,</span> <span class="var">cx</span><span class="op">,</span> <span class="var">cy</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">297</span><span class="cl">        <span class="str">&quot;&quot;&quot;3D 到 2D 透视几何变换&quot;&quot;&quot;</span>
+</span></div>
+<div class="line"><span class="ln">298</span><span class="cl">        <span class="var">cos_x</span><span class="op">,</span> <span class="var">sin_x</span> <span class="op">=</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="self">self</span><span class="op">.</span><span class="var">rot_x</span><span class="op">)</span><span class="op">,</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="self">self</span><span class="op">.</span><span class="var">rot_x</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">299</span><span class="cl">        <span class="var">y1</span> <span class="op">=</span> <span class="var">y</span> <span class="op">*</span> <span class="var">cos_x</span> <span class="op">-</span> <span class="var">z</span> <span class="op">*</span> <span class="var">sin_x</span>
+</span></div>
+<div class="line"><span class="ln">300</span><span class="cl">        <span class="var">z1</span> <span class="op">=</span> <span class="var">y</span> <span class="op">*</span> <span class="var">sin_x</span> <span class="op">+</span> <span class="var">z</span> <span class="op">*</span> <span class="var">cos_x</span>
+</span></div>
+<div class="line"><span class="ln">301</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">302</span><span class="cl">        <span class="var">cos_y</span><span class="op">,</span> <span class="var">sin_y</span> <span class="op">=</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="self">self</span><span class="op">.</span><span class="var">rot_y</span><span class="op">)</span><span class="op">,</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="self">self</span><span class="op">.</span><span class="var">rot_y</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">303</span><span class="cl">        <span class="var">x2</span> <span class="op">=</span> <span class="var">x</span> <span class="op">*</span> <span class="var">cos_y</span> <span class="op">+</span> <span class="var">z1</span> <span class="op">*</span> <span class="var">sin_y</span>
+</span></div>
+<div class="line"><span class="ln">304</span><span class="cl">        <span class="var">z2</span> <span class="op">=</span> <span class="op">-</span><span class="var">x</span> <span class="op">*</span> <span class="var">sin_y</span> <span class="op">+</span> <span class="var">z1</span> <span class="op">*</span> <span class="var">cos_y</span>
+</span></div>
+<div class="line"><span class="ln">305</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">306</span><span class="cl">        <span class="var">cam_dist</span> <span class="op">=</span> <span class="num">450</span>
+</span></div>
+<div class="line"><span class="ln">307</span><span class="cl">        <span class="var">depth</span> <span class="op">=</span> <span class="var">z2</span> <span class="op">+</span> <span class="var">cam_dist</span>
+</span></div>
+<div class="line"><span class="ln">308</span><span class="cl">        <span class="kw">if</span> <span class="var">depth</span> <span class="op">&lt;=</span><span class="num">15</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">309</span><span class="cl">            <span class="var">depth</span> <span class="op">=</span> <span class="num">15</span>
+</span></div>
+<div class="line"><span class="ln">310</span><span class="cl">        <span class="var">factor</span> <span class="op">=</span> <span class="op">(</span><span class="var">FOV</span> <span class="op">*</span> <span class="self">self</span><span class="op">.</span><span class="var">zoom</span><span class="op">)</span> <span class="op">/</span> <span class="var">depth</span>
+</span></div>
+<div class="line"><span class="ln">311</span><span class="cl">        <span class="var">screen_x</span> <span class="op">=</span> <span class="var">cx</span> <span class="op">+</span> <span class="var">x2</span> <span class="op">*</span> <span class="var">factor</span>
+</span></div>
+<div class="line"><span class="ln">312</span><span class="cl">        <span class="var">screen_y</span> <span class="op">=</span> <span class="var">cy</span> <span class="op">-</span> <span class="var">y1</span> <span class="op">*</span> <span class="var">factor</span>
+</span></div>
+<div class="line"><span class="ln">313</span><span class="cl">        <span class="kw">return</span> <span class="var">screen_x</span><span class="op">,</span> <span class="var">screen_y</span><span class="op">,</span> <span class="var">z2</span>
+</span></div>
+<div class="line"><span class="ln">314</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">315</span><span class="cl">    <span class="kw">def</span> <span class="fn">draw_code_aesthetic</span><span class="op">(</span><span class="self">self</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">316</span><span class="cl">        <span class="str">&quot;&quot;&quot;左侧浪漫极客源码背景 (视频同款排版)&quot;&quot;&quot;</span>
+</span></div>
+<div class="line"><span class="ln">317</span><span class="cl">        <span class="var">lines</span> <span class="op">=</span> <span class="op">[</span>
+</span></div>
+<div class="line"><span class="ln">318</span><span class="cl">            <span class="str">&quot;// Mathematical 3D Parametric Rose Surface&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">319</span><span class="cl">            <span class="str">&quot;const p = (PI / 2) * exp(-t / (8 * PI));&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">320</span><span class="cl">            <span class="str">&quot;const ripple = sin(15 * t) / 140.0;&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">321</span><span class="cl">            <span class="str">&quot;const u = 1 - pow(1 - (3.4 * t % 2PI)/PI, 4)/2 + ripple;&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">322</span><span class="cl">            <span class="str">&quot;const y_curl = 2 * pow(x*x - x, 2) * sin(p);&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">323</span><span class="cl">            <span class="str">&quot;const r = u * (x * sin(p) + y_curl * cos(p));&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">324</span><span class="cl">            <span class="str">&quot;const h = u * (x * cos(p) - y_curl * sin(p));&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">325</span><span class="cl">            <span class="str">&quot;&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">326</span><span class="cl">            <span class="str">&quot;function heartBeatPulse(time) {&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">327</span><span class="cl">            <span class="str">&quot;    const beat = sin(time * 2.8) * sqrt(abs(cos(time * 2.8)));&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">328</span><span class="cl">            <span class="str">&quot;    return 1.0 + 0.05 * beat;&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">329</span><span class="cl">            <span class="str">&quot;}&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">330</span><span class="cl">            <span class="str">&quot;&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">331</span><span class="cl">            <span class="str">&quot;// Render Status: 4,600 Volumetric Points&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">332</span><span class="cl">            <span class="str">&quot;// Geometric Curvature: Rose Spiral Fibonacci&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">333</span><span class="cl">            <span class="str">&quot;// Depth-Sort Painter&#x27;s Occlusion: Enabled&quot;</span>
+</span></div>
+<div class="line"><span class="ln">334</span><span class="cl">        <span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">335</span><span class="cl">        <span class="var">start_y</span> <span class="op">=</span> <span class="num">70</span>
+</span></div>
+<div class="line"><span class="ln">336</span><span class="cl">        <span class="kw">for</span> <span class="var">text</span> <span class="kw">in</span> <span class="var">lines</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">337</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">create_text</span><span class="op">(</span>
+</span></div>
+<div class="line"><span class="ln">338</span><span class="cl">                <span class="num">35</span><span class="op">,</span> <span class="var">start_y</span><span class="op">,</span> <span class="var">text</span><span class="op">=</span><span class="var">text</span><span class="op">,</span> <span class="var">anchor</span><span class="op">=</span><span class="str">&quot;w&quot;</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">339</span><span class="cl">                <span class="var">font</span><span class="op">=</span><span class="op">(</span><span class="str">&quot;Menlo&quot;</span><span class="op">,</span> <span class="num">11</span><span class="op">)</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">340</span><span class="cl">                <span class="var">fill</span><span class="op">=</span><span class="str">&quot;#1f2c3f&quot;</span>
+</span></div>
+<div class="line"><span class="ln">341</span><span class="cl">            <span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">342</span><span class="cl">            <span class="var">start_y</span> <span class="op">+=</span> <span class="num">24</span>
+</span></div>
+<div class="line"><span class="ln">343</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">344</span><span class="cl">    <span class="kw">def</span> <span class="fn">render_loop</span><span class="op">(</span><span class="self">self</span><span class="op">)</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">345</span><span class="cl">        <span class="kw">if</span> <span class="kw">not</span> <span class="self">self</span><span class="op">.</span><span class="var">is_running</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">346</span><span class="cl">            <span class="kw">return</span>
+</span></div>
+<div class="line"><span class="ln">347</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">348</span><span class="cl">        <span class="var">t</span> <span class="op">=</span> <span class="bi">time</span><span class="op">.</span><span class="bi">time</span><span class="op">(</span><span class="op">)</span> <span class="op">-</span> <span class="self">self</span><span class="op">.</span><span class="var">start_time</span>
+</span></div>
+<div class="line"><span class="ln">349</span><span class="cl">        <span class="var">pal</span> <span class="op">=</span> <span class="var">PALETTES</span><span class="op">[</span><span class="var">current_theme</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">350</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">351</span><span class="cl">        <span class="kw">if</span> <span class="self">self</span><span class="op">.</span><span class="var">auto_rotate</span> <span class="kw">and</span> <span class="kw">not</span> <span class="self">self</span><span class="op">.</span><span class="var">is_dragging</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">352</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">rot_y</span> <span class="op">+=</span> <span class="num">0.011</span>
+</span></div>
+<div class="line"><span class="ln">353</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">rot_x</span> <span class="op">=</span> <span class="num">0.45</span> <span class="op">+</span> <span class="num">0.08</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">t</span> <span class="op">*</span> <span class="num">0.5</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">354</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">355</span><span class="cl">        <span class="cm"># 优雅平缓的呼吸律动</span>
+</span></div>
+<div class="line"><span class="ln">356</span><span class="cl">        <span class="var">pulse</span> <span class="op">=</span> <span class="num">1.0</span> <span class="op">+</span> <span class="num">0.045</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">t</span> <span class="op">*</span> <span class="num">2.4</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="var">abs</span><span class="op">(</span><span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">t</span> <span class="op">*</span> <span class="num">2.4</span><span class="op">)</span><span class="op">)</span> <span class="op">**</span> <span class="num">0.5</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">357</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">358</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">delete</span><span class="op">(</span><span class="str">&quot;all&quot;</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">359</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">360</span><span class="cl">        <span class="cm"># 1. 源码装饰</span>
+</span></div>
+<div class="line"><span class="ln">361</span><span class="cl">        <span class="kw">if</span> <span class="self">self</span><span class="op">.</span><span class="var">show_code</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">362</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">draw_code_aesthetic</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">363</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">364</span><span class="cl">        <span class="var">center_x</span> <span class="op">=</span> <span class="var">WIDTH</span> <span class="op">*</span> <span class="num">0.60</span>
+</span></div>
+<div class="line"><span class="ln">365</span><span class="cl">        <span class="var">center_y</span> <span class="op">=</span> <span class="var">HEIGHT</span> <span class="op">*</span> <span class="num">0.50</span>
+</span></div>
+<div class="line"><span class="ln">366</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">367</span><span class="cl">        <span class="cm"># 2. 3D 立方体边框</span>
+</span></div>
+<div class="line"><span class="ln">368</span><span class="cl">        <span class="var">proj_cube</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">369</span><span class="cl">        <span class="kw">for</span> <span class="var">vx</span><span class="op">,</span> <span class="var">vy</span><span class="op">,</span> <span class="var">vz</span> <span class="kw">in</span> <span class="var">CUBE_VERTICES</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">370</span><span class="cl">            <span class="var">sx</span><span class="op">,</span> <span class="var">sy</span><span class="op">,</span> <span class="var">sz</span> <span class="op">=</span> <span class="self">self</span><span class="op">.</span><span class="var">project_3d</span><span class="op">(</span><span class="var">vx</span><span class="op">,</span> <span class="var">vy</span><span class="op">,</span> <span class="var">vz</span><span class="op">,</span> <span class="var">center_x</span><span class="op">,</span> <span class="var">center_y</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">371</span><span class="cl">            <span class="var">proj_cube</span><span class="op">.</span><span class="var">append</span><span class="op">(</span><span class="op">(</span><span class="var">sx</span><span class="op">,</span> <span class="var">sy</span><span class="op">,</span> <span class="var">sz</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">372</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">373</span><span class="cl">        <span class="kw">for</span> <span class="var">i</span><span class="op">,</span> <span class="var">j</span> <span class="kw">in</span> <span class="var">CUBE_EDGES</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">374</span><span class="cl">            <span class="var">x1</span><span class="op">,</span> <span class="var">y1</span><span class="op">,</span> <span class="var">z1</span> <span class="op">=</span> <span class="var">proj_cube</span><span class="op">[</span><span class="var">i</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">375</span><span class="cl">            <span class="var">x2</span><span class="op">,</span> <span class="var">y2</span><span class="op">,</span> <span class="var">z2</span> <span class="op">=</span> <span class="var">proj_cube</span><span class="op">[</span><span class="var">j</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">376</span><span class="cl">            <span class="var">avg_z</span> <span class="op">=</span> <span class="op">(</span><span class="var">z1</span> <span class="op">+</span> <span class="var">z2</span><span class="op">)</span> <span class="op">/</span> <span class="num">2</span>
+</span></div>
+<div class="line"><span class="ln">377</span><span class="cl">            <span class="var">edge_col</span> <span class="op">=</span> <span class="var">pal</span><span class="op">[</span><span class="str">&quot;cube&quot;</span><span class="op">]</span> <span class="kw">if</span> <span class="var">avg_z</span> <span class="op">&lt;</span><span class="num">0</span> <span class="kw">else</span> <span class="str">&quot;#1c2635&quot;</span>
+</span></div>
+<div class="line"><span class="ln">378</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">create_line</span><span class="op">(</span><span class="var">x1</span><span class="op">,</span> <span class="var">y1</span><span class="op">,</span> <span class="var">x2</span><span class="op">,</span> <span class="var">y2</span><span class="op">,</span> <span class="var">fill</span><span class="op">=</span><span class="var">edge_col</span><span class="op">,</span> <span class="var">width</span><span class="op">=</span><span class="num">1</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">379</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">380</span><span class="cl">        <span class="cm"># 3. 收集并进行深度排序 (Painter&#x27;s Algorithm 画家算法，保证前排花瓣完美遮挡后排花瓣)</span>
+</span></div>
+<div class="line"><span class="ln">381</span><span class="cl">        <span class="var">render_queue</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">382</span><span class="cl">        <span class="kw">for</span> <span class="var">p</span> <span class="kw">in</span> <span class="self">self</span><span class="op">.</span><span class="var">particles</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">383</span><span class="cl">            <span class="kw">if</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;part&quot;</span><span class="op">]</span> <span class="op">==</span> <span class="str">&quot;petal&quot;</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">384</span><span class="cl">                <span class="var">wobble</span> <span class="op">=</span> <span class="num">1.0</span> <span class="op">+</span> <span class="num">0.02</span> <span class="op">*</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">t</span> <span class="op">*</span> <span class="num">3.0</span> <span class="op">+</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;phase&quot;</span><span class="op">]</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">385</span><span class="cl">                <span class="var">px</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;x&quot;</span><span class="op">]</span> <span class="op">*</span> <span class="var">pulse</span> <span class="op">*</span> <span class="var">wobble</span>
+</span></div>
+<div class="line"><span class="ln">386</span><span class="cl">                <span class="var">py</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;y&quot;</span><span class="op">]</span> <span class="op">*</span> <span class="var">pulse</span> <span class="op">*</span> <span class="var">wobble</span>
+</span></div>
+<div class="line"><span class="ln">387</span><span class="cl">                <span class="var">pz</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;z&quot;</span><span class="op">]</span> <span class="op">*</span> <span class="var">pulse</span> <span class="op">*</span> <span class="var">wobble</span>
+</span></div>
+<div class="line"><span class="ln">388</span><span class="cl">            <span class="kw">elif</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;part&quot;</span><span class="op">]</span> <span class="op">==</span> <span class="str">&quot;stem&quot;</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">389</span><span class="cl">                <span class="var">px</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;x&quot;</span><span class="op">]</span> <span class="op">*</span> <span class="op">(</span><span class="num">1.0</span> <span class="op">+</span> <span class="num">0.015</span> <span class="op">*</span> <span class="var">pulse</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">390</span><span class="cl">                <span class="var">py</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;y&quot;</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">391</span><span class="cl">                <span class="var">pz</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;z&quot;</span><span class="op">]</span> <span class="op">*</span> <span class="op">(</span><span class="num">1.0</span> <span class="op">+</span> <span class="num">0.015</span> <span class="op">*</span> <span class="var">pulse</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">392</span><span class="cl">            <span class="kw">else</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">393</span><span class="cl">                <span class="var">px</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;x&quot;</span><span class="op">]</span> <span class="op">+</span> <span class="bi">math</span><span class="op">.</span><span class="var">sin</span><span class="op">(</span><span class="var">t</span> <span class="op">*</span> <span class="num">1.2</span> <span class="op">+</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;phase&quot;</span><span class="op">]</span><span class="op">)</span> <span class="op">*</span> <span class="num">5.0</span>
+</span></div>
+<div class="line"><span class="ln">394</span><span class="cl">                <span class="var">py</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;y&quot;</span><span class="op">]</span> <span class="op">+</span> <span class="bi">math</span><span class="op">.</span><span class="var">cos</span><span class="op">(</span><span class="var">t</span> <span class="op">*</span> <span class="num">1.2</span> <span class="op">+</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;phase&quot;</span><span class="op">]</span><span class="op">)</span> <span class="op">*</span> <span class="num">5.0</span>
+</span></div>
+<div class="line"><span class="ln">395</span><span class="cl">                <span class="var">pz</span> <span class="op">=</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;z&quot;</span><span class="op">]</span>
+</span></div>
+<div class="line"><span class="ln">396</span><span class="cl">                
+</span></div>
+<div class="line"><span class="ln">397</span><span class="cl">            <span class="var">sx</span><span class="op">,</span> <span class="var">sy</span><span class="op">,</span> <span class="var">sz</span> <span class="op">=</span> <span class="self">self</span><span class="op">.</span><span class="var">project_3d</span><span class="op">(</span><span class="var">px</span><span class="op">,</span> <span class="var">py</span><span class="op">,</span> <span class="var">pz</span><span class="op">,</span> <span class="var">center_x</span><span class="op">,</span> <span class="var">center_y</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">398</span><span class="cl">            <span class="var">render_queue</span><span class="op">.</span><span class="var">append</span><span class="op">(</span><span class="op">(</span><span class="var">sz</span><span class="op">,</span> <span class="var">sx</span><span class="op">,</span> <span class="var">sy</span><span class="op">,</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;col&quot;</span><span class="op">]</span><span class="op">,</span> <span class="var">p</span><span class="op">[</span><span class="str">&quot;size&quot;</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">399</span><span class="cl">            
+</span></div>
+<div class="line"><span class="ln">400</span><span class="cl">        <span class="cm"># 从深到浅排序渲染 (深度缓冲)</span>
+</span></div>
+<div class="line"><span class="ln">401</span><span class="cl">        <span class="var">render_queue</span><span class="op">.</span><span class="var">sort</span><span class="op">(</span><span class="var">key</span><span class="op">=</span><span class="kw">lambda</span> <span class="var">item</span><span class="op">:</span> <span class="var">item</span><span class="op">[</span><span class="num">0</span><span class="op">]</span><span class="op">,</span> <span class="var">reverse</span><span class="op">=</span><span class="kw">True</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">402</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">403</span><span class="cl">        <span class="kw">for</span> <span class="var">sz</span><span class="op">,</span> <span class="var">sx</span><span class="op">,</span> <span class="var">sy</span><span class="op">,</span> <span class="var">col</span><span class="op">,</span> <span class="var">size</span> <span class="kw">in</span> <span class="var">render_queue</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">404</span><span class="cl">            <span class="kw">if</span> <span class="var">sz</span> <span class="op">&lt;</span><span class="op">-</span><span class="num">80</span> <span class="kw">and</span> <span class="var">size</span> <span class="op">&gt;</span><span class="num">1</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">405</span><span class="cl">                <span class="var">size</span> <span class="op">=</span> <span class="num">1</span>
+</span></div>
+<div class="line"><span class="ln">406</span><span class="cl">            <span class="kw">elif</span> <span class="var">sz</span> <span class="op">&gt;</span><span class="num">70</span> <span class="kw">and</span> <span class="var">size</span> <span class="op">==</span> <span class="num">1</span> <span class="kw">and</span> <span class="bi">random</span><span class="op">.</span><span class="bi">random</span><span class="op">(</span><span class="op">)</span> <span class="op">&lt;</span><span class="num">0.12</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">407</span><span class="cl">                <span class="var">size</span> <span class="op">=</span> <span class="num">2</span>
+</span></div>
+<div class="line"><span class="ln">408</span><span class="cl">                
+</span></div>
+<div class="line"><span class="ln">409</span><span class="cl">            <span class="kw">if</span> <span class="var">size</span> <span class="op">==</span> <span class="num">1</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">410</span><span class="cl">                <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">create_rectangle</span><span class="op">(</span><span class="var">sx</span><span class="op">,</span> <span class="var">sy</span><span class="op">,</span> <span class="var">sx</span><span class="op">+</span><span class="num">1</span><span class="op">,</span> <span class="var">sy</span><span class="op">+</span><span class="num">1</span><span class="op">,</span> <span class="var">outline</span><span class="op">=</span><span class="var">col</span><span class="op">,</span> <span class="var">fill</span><span class="op">=</span><span class="var">col</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">411</span><span class="cl">            <span class="kw">else</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">412</span><span class="cl">                <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">create_rectangle</span><span class="op">(</span><span class="var">sx</span><span class="op">-</span><span class="num">1</span><span class="op">,</span> <span class="var">sy</span><span class="op">-</span><span class="num">1</span><span class="op">,</span> <span class="var">sx</span><span class="op">+</span><span class="num">1</span><span class="op">,</span> <span class="var">sy</span><span class="op">+</span><span class="num">1</span><span class="op">,</span> <span class="var">outline</span><span class="op">=</span><span class="var">col</span><span class="op">,</span> <span class="var">fill</span><span class="op">=</span><span class="var">col</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">413</span><span class="cl">                
+</span></div>
+<div class="line"><span class="ln">414</span><span class="cl">        <span class="cm"># 4. HUD 交互提示</span>
+</span></div>
+<div class="line"><span class="ln">415</span><span class="cl">        <span class="var">info_text</span> <span class="op">=</span> f&quot;🌹 主题: <span class="op">{</span><span class="var">pal</span><span class="op">[</span><span class="str">&#x27;name&#x27;</span><span class="op">]</span><span class="op">}</span> | [C] 切换配色 | [空格] 暂停旋转 | [+/-] 缩放 | 🖱️ 鼠标拖拽 360° 旋转&quot;
+</span></div>
+<div class="line"><span class="ln">416</span><span class="cl">        <span class="self">self</span><span class="op">.</span><span class="var">canvas</span><span class="op">.</span><span class="var">create_text</span><span class="op">(</span>
+</span></div>
+<div class="line"><span class="ln">417</span><span class="cl">            <span class="var">WIDTH</span> <span class="op">//</span> <span class="num">2</span><span class="op">,</span> <span class="var">HEIGHT</span> <span class="op">-</span> <span class="num">22</span><span class="op">,</span> <span class="var">text</span><span class="op">=</span><span class="var">info_text</span><span class="op">,</span>
+</span></div>
+<div class="line"><span class="ln">418</span><span class="cl">            <span class="var">fill</span><span class="op">=</span><span class="str">&quot;#5a6b82&quot;</span><span class="op">,</span> <span class="var">font</span><span class="op">=</span><span class="op">(</span><span class="str">&quot;Helvetica&quot;</span><span class="op">,</span> <span class="num">11</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">419</span><span class="cl">        <span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">420</span><span class="cl">        
+</span></div>
+<div class="line"><span class="ln">421</span><span class="cl">        <span class="kw">try</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">422</span><span class="cl">            <span class="self">self</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">after</span><span class="op">(</span><span class="num">16</span><span class="op">,</span> <span class="self">self</span><span class="op">.</span><span class="var">render_loop</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">423</span><span class="cl">        <span class="kw">except</span> <span class="var">Exception</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">424</span><span class="cl">            <span class="kw">pass</span>
+</span></div>
+<div class="line"><span class="ln">425</span><span class="cl">
+</span></div>
+<div class="line"><span class="ln">426</span><span class="cl"><span class="kw">if</span> <span class="var">__name__</span> <span class="op">==</span> <span class="str">&quot;__main__&quot;</span><span class="op">:</span>
+</span></div>
+<div class="line"><span class="ln">427</span><span class="cl">    <span class="var">app</span> <span class="op">=</span> <span class="var">PerfectRoseApp</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">428</span><span class="cl">    <span class="var">app</span><span class="op">.</span><span class="var">root</span><span class="op">.</span><span class="var">mainloop</span><span class="op">(</span><span class="op">)</span>
+</span></div>
+<div class="line"><span class="ln">429</span><span class="cl">&nbsp;</span></div>
