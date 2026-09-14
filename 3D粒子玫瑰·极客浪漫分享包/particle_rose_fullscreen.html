@@ -104,7 +104,69 @@ html, body {
 #stage {
   position: absolute; inset: 0; width: 100%; height: 100%;
 }
-canvas { display: block; width: 100%; height: 100%; }
+canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+@media (max-width: 768px) {
+  #code-panel {
+    width: 88vw !important;
+    max-width: 320px !important;
+    z-index: 45;
+  }
+  #hint {
+    left: 16px !important;
+    top: 14px !important;
+    font-size: 10px !important;
+    max-width: calc(100vw - 32px);
+  }
+  #code-panel.collapsed ~ #hint {
+    left: 16px !important;
+  }
+  #ui {
+    bottom: 12px !important;
+    max-width: calc(100vw - 16px) !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 6px 8px !important;
+    gap: 4px !important;
+    border-radius: 24px !important;
+  }
+  #ui::-webkit-scrollbar { display: none; }
+  button, #mascot-nav-btn {
+    padding: 6px 9px !important;
+    font-size: 11px !important;
+    flex-shrink: 0 !important;
+  }
+  .popup-panel {
+    bottom: 68px !important;
+    width: calc(100vw - 20px) !important;
+    max-width: 350px !important;
+    max-height: 65vh !important;
+    padding: 14px 16px !important;
+    border-radius: 16px !important;
+  }
+  .theme-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px !important;
+  }
+  .theme-item {
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+    gap: 6px !important;
+  }
+  .theme-color-dot {
+    width: 12px !important;
+    height: 12px !important;
+  }
+  .style-item {
+    padding: 7px 10px !important;
+    font-size: 11.5px !important;
+  }
+  #settings {
+    width: calc(100vw - 20px) !important;
+    max-width: 330px !important;
+  }
+}
 
 #hint {
   position: fixed; top: 22px; left: 470px; font-size: 11px;
@@ -2780,27 +2842,70 @@ window.addEventListener('keydown', e => {
   }
 });
 
-let pointer = null;
+// Mobile auto-collapse code panel
+if (window.innerWidth <= 768) {
+  PARAMS.codeVisible = false;
+  $('code-panel').classList.add('collapsed');
+  $('code-btn').classList.remove('active');
+}
+
+// Unified Pointer & Multi-touch Pinch Zoom
+const activePointers = new Map();
+let initialPinchDist = null;
+let initialPinchDistance = null;
+let singlePointer = null;
+
 canvas.addEventListener('pointerdown', e => {
-  pointer = { x: e.clientX, y: e.clientY };
+  activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   canvas.setPointerCapture(e.pointerId);
-});
-canvas.addEventListener('pointermove', e => {
-  if (pointer) {
-    PARAMS.manualYaw += (e.clientX - pointer.x) * 0.006;
-    PARAMS.manualPitch = clamp(PARAMS.manualPitch + (e.clientY - pointer.y) * 0.004, -0.65, 0.65);
-    pointer = { x: e.clientX, y: e.clientY };
+  if (activePointers.size === 1) {
+    singlePointer = { x: e.clientX, y: e.clientY };
+  } else if (activePointers.size === 2) {
+    singlePointer = null;
+    const pts = Array.from(activePointers.values());
+    initialPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    initialPinchDistance = PARAMS.cameraDistance;
   }
 });
-canvas.addEventListener('pointerup', () => pointer = null);
-canvas.addEventListener('pointercancel', () => pointer = null);
+
+canvas.addEventListener('pointermove', e => {
+  if (activePointers.has(e.pointerId)) {
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  }
+  if (activePointers.size === 2 && initialPinchDist) {
+    const pts = Array.from(activePointers.values());
+    const currentDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    const scale = initialPinchDist / Math.max(1, currentDist);
+    PARAMS.cameraDistance = clamp(initialPinchDistance * scale, 4.0, 14.0);
+  } else if (singlePointer && activePointers.size === 1) {
+    PARAMS.manualYaw += (e.clientX - singlePointer.x) * 0.006;
+    PARAMS.manualPitch = clamp(PARAMS.manualPitch + (e.clientY - singlePointer.y) * 0.004, -0.65, 0.65);
+    singlePointer = { x: e.clientX, y: e.clientY };
+  }
+});
+
+const removePointer = e => {
+  activePointers.delete(e.pointerId);
+  if (activePointers.size < 2) {
+    initialPinchDist = null;
+  }
+  if (activePointers.size === 1) {
+    const remaining = activePointers.values().next().value;
+    singlePointer = { x: remaining.x, y: remaining.y };
+  } else {
+    singlePointer = null;
+  }
+};
+canvas.addEventListener('pointerup', removePointer);
+canvas.addEventListener('pointercancel', removePointer);
+
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
   PARAMS.cameraDistance = clamp(PARAMS.cameraDistance + e.deltaY * 0.003, 5.0, 12);
 }, { passive: false });
 
 let idle;
-document.addEventListener('pointermove', () => {
+const wakeUpUI = () => {
   document.body.classList.remove('quiet');
   clearTimeout(idle);
   idle = setTimeout(() => {
@@ -2808,7 +2913,9 @@ document.addEventListener('pointermove', () => {
       document.body.classList.add('quiet');
     }
   }, 5000);
-});
+};
+document.addEventListener('pointermove', wakeUpUI);
+document.addEventListener('pointerdown', wakeUpUI);
 idle = setTimeout(() => document.body.classList.add('quiet'), 5500);
 </script>
 </body>
