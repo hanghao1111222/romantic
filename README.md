@@ -17,7 +17,7 @@
 
 无需安装任何环境，手机或电脑浏览器点击即开：
 - 🌹 **[3D 粒子花朵实验室 (3D Botanical Lab)](https://hanghao1111222.github.io/romantic/)** — 9 款数学花型 · 16 款璀璨配色 · 源码流 · 3D 线框
-- ⚡ **[粒子萌宠工作室 (Particle Mascot Studio)](https://hanghao1111222.github.io/romantic/particle_mascot_studio.html)** — 皮卡丘/蓝兔/粉猫/紫狐 · 3D 视差拖拽 · 粒子爆炸散开
+- ⚡ **[粒子萌宠工作室 (Particle Mascot Studio)](https://hanghao1111222.github.io/romantic/particle_mascot_studio.html)** — 兔八哥/皮卡丘/蓝兔/粉猫/紫狐 · 3D 视差拖拽 · 粒子爆炸散开
 
 ---
 
@@ -55,7 +55,8 @@
 </p>
 
 纯原生 HTML5 Canvas 2D 高性能几何点阵生成：
-* **4 款经典灵动角色预设:**
+* **5 款经典灵动角色预设:**
+  - 🥕 **Bugs Bunny (兔八哥 / 经典美漫明星):** 标志性修长双耳（左耳俏皮微折）、两颗招牌大板牙、手持咬痕鲜脆大胡萝卜（带绿缨）、经典三道纹白手套与灵动胡须点
   - ⚡ **Electric Mouse (电气鼠 / 皮卡丘):** 闪烁黄色粒子簇、发光红脸颊、黑色耳尖、闪电尾巴与跳跃环绕的动态电弧
   - 🐰 **Blue Stardust Bunny (星尘蓝兔):** 蔚蓝星尘毛质、修长柔美双耳、呆萌圆眼与圆润白尾
   - 🐱 **Pink Nebula Kitten (星云粉猫):** 梦幻粉色星云点阵、俏皮三角耳、灵动小胡须与弧形俏尾巴
