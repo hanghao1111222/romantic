@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D 机械灵蝶 · Chrono-Cyber Butterfly (Three.js)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: #05070b;
+            color: #d8ecf8;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* 极客毛玻璃 HUD 界面 */
+        .hud-glass {
+            background: rgba(10, 16, 26, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(80, 200, 255, 0.18);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 0 12px rgba(80, 200, 255, 0.05);
+            border-radius: 14px;
+        }
+
+        /* 顶部品牌与状态栏 */
+        #header-bar {
+            position: absolute;
+            top: 20px;
+            left: 24px;
+            z-index: 10;
+            padding: 14px 22px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            pointer-events: auto;
+        }
+
+        .brand-badge {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00f2fe;
+            box-shadow: 0 0 12px #00f2fe, 0 0 24px #00f2fe;
+            animation: pulse-glow 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.6; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .brand-title {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, #ffffff 30%, #70a6ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-sub {
+            font-size: 11px;
+            color: #5c84a8;
+            letter-spacing: 1px;
+            margin-top: 2px;
+        }
+
+        /* 右侧控制浮窗 */
+        #control-panel {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            z-index: 10;
+            width: 320px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            pointer-events: auto;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
+        }
+
+        #control-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+        #control-panel::-webkit-scrollbar-thumb {
+            background: rgba(80, 200, 255, 0.2);
+            border-radius: 2px;
+        }
+
+        .panel-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: #6892b8;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .btn-item {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #bed7ea;
+            font-size: 12px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-align: center;
+        }
+
+        .btn-item:hover {
+            background: rgba(0, 242, 254, 0.12);
+            border-color: rgba(0, 242, 254, 0.4);
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        .btn-item.active {
+            background: linear-gradient(135deg, rgba(0, 242, 254, 0.25), rgba(112, 58, 250, 0.3));
+            border-color: #00f2fe;
+            color: #ffffff;
+            box-shadow: 0 0 12px rgba(0, 242, 254, 0.25);
+        }
+
+        /* 滑块控制器 */
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #9cb8d3;
+        }
+
+        .slider-val {
+            font-family: monospace;
+            color: #00f2fe;
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 5px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.12);
+            outline: none;
+            transition: background 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #00f2fe;
+            cursor: pointer;
+            box-shadow: 0 0 8px #00f2fe;
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+        }
+
+        /* 底部信息与快捷说明 */
+        #bottom-hints {
+            position: absolute;
+            bottom: 20px;
+            left: 24px;
+            z-index: 10;
+            padding: 10px 18px;
+            font-size: 11px;
+            color: #5c7e9f;
+            display: flex;
+            gap: 20px;
+            pointer-events: none;
+        }
+
+        .hint-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .hint-key {
+            padding: 2px 6px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            color: #a7cde8;
+            font-family: monospace;
+        }
+
+        /* 折叠面板按钮 (移动端/精简模式) */
+        #toggle-panel-btn {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            z-index: 11;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #00f2fe;
+            font-size: 18px;
+        }
+
+        @media (max-width: 768px) {
+            #control-panel {
+                top: 70px;
+                right: 14px;
+                width: calc(100vw - 28px);
+                max-height: 65vh;
+                transform: translateY(-120%);
+                opacity: 0;
+            }
+            #control-panel.show {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            #toggle-panel-btn {
+                display: flex;
+            }
+            #bottom-hints {
+                display: none;
+            }
+        }
+
+        /* 载入指示器 */
+        #loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #04070d;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            transition: opacity 0.8s ease, visibility 0.8s;
+        }
+
+        .loader-ring {
+            width: 64px;
+            height: 64px;
+            border: 3px solid rgba(0, 242, 254, 0.15);
+            border-top-color: #00f2fe;
+            border-right-color: #7928ca;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loader-text {
+            font-size: 13px;
+            letter-spacing: 3px;
+            color: #6da2cb;
+            text-transform: uppercase;
+        }
+    </style>
+
+    <!-- Three.js 核心及后期处理库 (CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/FXAAShader.js"></script>
+</head>
+<body>
+
+    <!-- 3D 渲染容器 -->
+    <div id="canvas-container"></div>
+
+    <!-- 加载转场遮罩 -->
+    <div id="loading-screen">
+        <div class="loader-ring"></div>
+        <div class="loader-text">Initializing Chrono-Kinetic Engine...</div>
+    </div>
+
+    <!-- 顶部状态栏 -->
+    <div id="header-bar" class="hud-glass">
+        <div class="brand-badge"></div>
+        <div>
+            <div class="brand-title">CHRONO-CYBER BUTTERFLY</div>
+            <div class="brand-sub">PROCEDURAL MECHANICAL BIO-SYNTHESIS · THREE.JS</div>
+        </div>
+    </div>
+
+    <!-- 移动端面板开关 -->
+    <div id="toggle-panel-btn" class="hud-glass">⚙</div>
+
+    <!-- 侧边交互 HUD -->
+    <div id="control-panel" class="hud-glass">
+        <!-- 视角切换 -->
+        <div>
+            <div class="panel-section-title">
+                <span>视角预设 (View Angle)</span>
+                <span style="font-size: 10px; opacity: 0.6;">[CAM]</span>
+            </div>
+            <div class="btn-grid">
+                <button class="btn-item active" data-cam="macro">🌐 全景巡航</button>
+                <button class="btn-item" data-cam="engine">⚙️ 动力齿轮箱</button>
+                <button class="btn-item" data-cam="head">👁️ 传感器面甲</button>
+                <button class="btn-item" data-cam="wing">🦋 光电翼脉</button>
+            </div>
+        </div>
+
+        <!-- 调色与核心能量主题 -->
+        <div>
+            <div class="panel-section-title">
+                <span>能量主题 (Theme Palette)</span>
+                <span style="font-size: 10px; opacity: 0.6;">[PBR]</span>
+            </div>
+            <div class="btn-grid">
+                <button class="btn-item active" data-theme="cyber">💎 赛博以太</button>
+                <button class="btn-item" data-theme="steampunk">⚙️ 蒸汽纪元</button>
+                <button class="btn-item" data-theme="obsidian">⚡ 黑曜熔核</button>
+                <button class="btn-item" data-theme="angel">🕊️ 未来战神</button>
+            </div>
+        </div>
+
+        <!-- 动作模式 -->
+        <div>
+            <div class="panel-section-title">
+                <span>运动模式 (Kinematics)</span>
+                <span style="font-size: 10px; opacity: 0.6;">[ACT]</span>
+            </div>
+            <div class="btn-grid">
+                <button class="btn-item active" data-flight="cruise">🕊️ 灵动悬停</button>
+                <button class="btn-item" data-flight="rapid">⚡ 极限震颤</button>
+                <button class="btn-item" data-flight="glide">🪂 展翅滑行</button>
+                <button class="btn-item" data-flight="stop">⏸️ 机械展台</button>
+            </div>
+        </div>
+
+        <!-- 调节滑块 -->
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span>拍翅速率 (Frequency)</span>
+                    <span id="val-speed" class="slider-val">1.0x</span>
+                </div>
+                <input id="slider-speed" type="range" min="0.2" max="2.5" step="0.1" value="1.0">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span>辉光泛光 (Bloom Intensity)</span>
+                    <span id="val-bloom" class="slider-val">1.25</span>
+                </div>
+                <input id="slider-bloom" type="range" min="0.0" max="2.5" step="0.05" value="1.25">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span>环绕自转 (Auto Spin)</span>
+                    <span id="val-spin" class="slider-val">0.3</span>
+                </div>
+                <input id="slider-spin" type="range" min="0" max="1.5" step="0.1" value="0.3">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span>翼展张角 (Wing Flare)</span>
+                    <span id="val-flare" class="slider-val">0°</span>
+                </div>
+                <input id="slider-flare" type="range" min="-25" max="35" step="1" value="0">
+            </div>
+        </div>
+
+        <!-- 渲染与构件特效开关 -->
+        <div>
+            <div class="panel-section-title">
+                <span>显示构件 (Inspection)</span>
+            </div>
+            <div class="btn-grid">
+                <button id="btn-wireframe" class="btn-item">🕸️ 线框透视</button>
+                <button id="btn-particles" class="btn-item active">✨ 能量粒子流</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部快捷提示 -->
+    <div id="bottom-hints" class="hud-glass">
+        <div class="hint-item"><span class="hint-key">鼠标左键</span> 360° 全方位自由旋转</div>
+        <div class="hint-item"><span class="hint-key">鼠标右键</span> 平移观察机械细节</div>
+        <div class="hint-item"><span class="hint-key">滚轮</span> 推进/拉远变焦</div>
+        <div class="hint-item"><span class="hint-key">双击</span> 聚焦机械核心</div>
+    </div>
+
+    <script>
+        /**
+         * ============================================================================
+         * 3D 机械灵蝶 (Chrono-Cyber Butterfly) · 程序化工程实现
+         * 纯算法几何生成 (Procedural Geometry) + PBR 复合材料 + 联动动力学 + 后期辉光
+         * ============================================================================
+         */
+
+        // --- 全局状态与配置 ---
+        const CONFIG = {
+            speedMultiplier: 1.0,
+            flightMode: 'cruise', // 'cruise', 'rapid', 'glide', 'stop'
+            theme: 'cyber',
+            flareOffset: 0,
+            autoRotateSpeed: 0.3,
+            bloomStrength: 1.25,
+            wireframe: false,
+            particlesEnabled: true
+        };
+
+        // --- 主题调色板定义 ---
+        const PALETTES = {
+            cyber: {
+                name: '赛博以太',
+                primaryMetal: 0x18202c,      // 深邃钛黑
+                secondaryMetal: 0x8ab4f8,    // 亮银冷钢
+                brassAccent: 0x00f2fe,       // 霓虹青蓝
+                glowCore: 0x00f0ff,          // 反应堆蓝光
+                glowAccent: 0xa855f7,        // 脉冲电弧紫
+                membraneColor: 0x00ffff,     // 翼膜基色
+                membraneOpacity: 0.65,
+                background: 0x04070e,
+                fogColor: 0x04070e
+            },
+            steampunk: {
+                name: '蒸汽纪元',
+                primaryMetal: 0x221812,      // 铸铁黑
+                secondaryMetal: 0xd4af37,    // 精密抛光黄铜
+                brassAccent: 0xb87333,       // 红铜导管
+                glowCore: 0xffaa22,          // 琥珀熔岩核心
+                glowAccent: 0xff4400,        // 灼热排气焰
+                membraneColor: 0xffd700,
+                membraneOpacity: 0.7,
+                background: 0x0a0705,
+                fogColor: 0x0a0705
+            },
+            obsidian: {
+                name: '黑曜熔核',
+                primaryMetal: 0x0d0d11,      // 哑光黑曜石
+                secondaryMetal: 0x3a3a48,    // 陨铁灰
+                brassAccent: 0xff2a5f,       // 极光玫红
+                glowCore: 0xff0033,          // 高能激光红
+                glowAccent: 0xff5500,        // 等离子橙
+                membraneColor: 0xff0044,
+                membraneOpacity: 0.6,
+                background: 0x080406,
+                fogColor: 0x080406
+            },
+            angel: {
+                name: '未来战神',
+                primaryMetal: 0xd8e4f0,      // 纳米极光白
+                secondaryMetal: 0xffffff,    // 镀铬镜银
+                brassAccent: 0xffc83b,       // 圣堂黄金
+                glowCore: 0x50e3c2,          // 天使碧绿/青
+                glowAccent: 0xffdd55,        // 圣光金芒
+                membraneColor: 0x70d6ff,
+                membraneOpacity: 0.72,
+                background: 0x050810,
+                fogColor: 0x050810
+            }
+        };
+
+        // --- 场景、渲染器、相机与控制器初始化 ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(PALETTES.cyber.fogColor, 0.015);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 5, 12);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.15;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = 25;
+        controls.minDistance = 2.5;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = CONFIG.autoRotateSpeed;
+        controls.target.set(0, 0, 0);
+
+        // --- 后期处理：辉光合成通道 (UnrealBloomPass) ---
+        const renderScene = new THREE.RenderPass(scene, camera);
+        const bloomPass = new THREE.UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            CONFIG.bloomStrength,
+            0.4,
+            0.85
+        );
+
+        const composer = new THREE.EffectComposer(renderer);
+        composer.addPass(renderScene);
+        composer.addPass(bloomPass);
+
+        // --- 灯光系统 ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
+        scene.add(ambientLight);
+
+        // 主高光冷光源
+        const mainKeyLight = new THREE.DirectionalLight(0xffffff, 1.8);
+        mainKeyLight.position.set(8, 14, 10);
+        mainKeyLight.castShadow = true;
+        scene.add(mainKeyLight);
+
+        // 侧后方轮廓金光
+        const rimLight = new THREE.DirectionalLight(0x70a6ff, 1.4);
+        rimLight.position.set(-10, -5, -8);
+        scene.add(rimLight);
+
+        // 核心动态呼吸补光 (随反应堆脉动)
+        const reactorPointLight = new THREE.PointLight(PALETTES.cyber.glowCore, 3.5, 8);
+        reactorPointLight.position.set(0, 0, 0.2);
+        scene.add(reactorPointLight);
+
+        // --- 全局动态材质管理器 ---
+        const materials = {};
+        function createPBRMaterials() {
+            const current = PALETTES[CONFIG.theme];
+
+            // 钛黑主外骨骼
+            materials.primaryMetal = new THREE.MeshStandardMaterial({
+                color: current.primaryMetal,
+                metalness: 0.92,
+                roughness: 0.28,
+                wireframe: CONFIG.wireframe
+            });
+
+            // 镜面镀铬/冷钢
+            materials.secondaryMetal = new THREE.MeshStandardMaterial({
+                color: current.secondaryMetal,
+                metalness: 0.98,
+                roughness: 0.16,
+                wireframe: CONFIG.wireframe
+            });
+
+            // 黄铜/强化饰条
+            materials.brassAccent = new THREE.MeshStandardMaterial({
+                color: current.brassAccent,
+                metalness: 0.88,
+                roughness: 0.32,
+                wireframe: CONFIG.wireframe
+            });
+
+            // 发光反应堆核心
+            materials.glowCore = new THREE.MeshBasicMaterial({
+                color: current.glowCore,
+                wireframe: CONFIG.wireframe
+            });
+
+            // 发光电弧导管
+            materials.glowAccent = new THREE.MeshBasicMaterial({
+                color: current.glowAccent,
+                wireframe: CONFIG.wireframe
+            });
+
+            // 程序化生成蝶翼发光能量电路贴图
+            const wingTexture = generateProceduralWingTexture();
+            materials.wingMembrane = new THREE.MeshPhysicalMaterial({
+                color: current.membraneColor,
+                map: wingTexture,
+                alphaMap: wingTexture,
+                transparent: true,
+                opacity: current.membraneOpacity,
+                transmission: 0.5,
+                roughness: 0.15,
+                metalness: 0.3,
+                ior: 1.52,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+                wireframe: CONFIG.wireframe
+            });
+
+            // 高反射微晶格网
+            materials.wingGrid = new THREE.MeshStandardMaterial({
+                color: current.secondaryMetal,
+                metalness: 0.95,
+                roughness: 0.2,
+                wireframe: true
+            });
+        }
+
+        /**
+         * 使用 HTML5 Canvas 纯程序化生成极其精细的未来电路/纳米蜂窝羽翼能量纹理
+         */
+        function generateProceduralWingTexture() {
+            const size = 1024;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // 黑色底色透光
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, size, size);
+
+            // 绘制主干能量导流母线
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(100, 900);
+            ctx.bezierCurveTo(300, 700, 600, 400, 950, 150);
+            ctx.bezierCurveTo(800, 500, 600, 800, 200, 920);
+            ctx.stroke();
+
+            // 绘制数十条分支电路网络
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+            for (let i = 0; i < 28; i++) {
+                const t = i / 28;
+                const startX = 120 + t * 700;
+                const startY = 880 - t * 650;
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                const cpX = startX + (Math.random() - 0.2) * 160;
+                const cpY = startY - Math.random() * 220;
+                const endX = startX + 180 + Math.random() * 120;
+                const endY = startY - 80 + Math.random() * 160;
+                ctx.quadraticCurveTo(cpX, cpY, endX, endY);
+                ctx.stroke();
+
+                // 电路末端晶片节点
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(endX, endY, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 绘制微型六边形纳米蜂窝阵列 (局部科技质感)
+            ctx.lineWidth = 0.8;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+            const r = 16;
+            const h = r * Math.sqrt(3);
+            for (let y = 100; y < 800; y += h) {
+                for (let x = 100; x < 900; x += r * 3) {
+                    drawHexagon(ctx, x, y, r);
+                    drawHexagon(ctx, x + r * 1.5, y + h / 2, r);
+                }
+            }
+
+            function drawHexagon(context, x, y, radius) {
+                context.beginPath();
+                for (let a = 0; a < 6; a++) {
+                    const angle = (Math.PI / 3) * a;
+                    const hx = x + radius * Math.cos(angle);
+                    const hy = y + radius * Math.sin(angle);
+                    if (a === 0) context.moveTo(hx, hy);
+                    else context.lineTo(hx, hy);
+                }
+                context.closePath();
+                context.stroke();
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        }
+
+        createPBRMaterials();
+
+        // --- 核心建模算法辅助函数 ---
+
+        /**
+         * 程序化生成具有真实齿形的精密机械齿轮几何体 (Involute Spur Gear)
+         */
+        function createGearGeometry(numTeeth, outerRadius, rootRadius, thickness, axleHoleRadius, numSpokes) {
+            const shape = new THREE.Shape();
+            const totalSteps = numTeeth * 4;
+            const tipRadius = outerRadius * 1.08;
+
+            for (let i = 0; i <= totalSteps; i++) {
+                const angle = (i / totalSteps) * Math.PI * 2;
+                const stepInTooth = i % 4;
+                let r = rootRadius;
+                if (stepInTooth === 1 || stepInTooth === 2) {
+                    r = tipRadius;
+                }
+                const x = Math.cos(angle) * r;
+                const y = Math.sin(angle) * r;
+                if (i === 0) shape.moveTo(x, y);
+                else shape.lineTo(x, y);
+            }
+
+            // 中心轴孔
+            const holePath = new THREE.Path();
+            holePath.absarc(0, 0, axleHoleRadius, 0, Math.PI * 2, true);
+            shape.holes.push(holePath);
+
+            // 镂空减重孔 (Spoke cutouts)
+            if (numSpokes > 0) {
+                const spokeRadius = (rootRadius + axleHoleRadius) * 0.5;
+                const cutoutR = (rootRadius - axleHoleRadius) * 0.28;
+                for (let s = 0; s < numSpokes; s++) {
+                    const spokeAngle = (s / numSpokes) * Math.PI * 2;
+                    const cx = Math.cos(spokeAngle) * spokeRadius;
+                    const cy = Math.sin(spokeAngle) * spokeRadius;
+                    const spokeHole = new THREE.Path();
+                    spokeHole.absarc(cx, cy, cutoutR, 0, Math.PI * 2, true);
+                    shape.holes.push(spokeHole);
+                }
+            }
+
+            const extrudeSettings = {
+                depth: thickness,
+                bevelEnabled: true,
+                bevelSegments: 2,
+                steps: 1,
+                bevelSize: thickness * 0.12,
+                bevelThickness: thickness * 0.12
+            };
+
+            const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            geometry.center();
+            return geometry;
+        }
+
+        // ============================================================================
+        // 机械蝴蝶主结构组装 (Assembly System)
+        // ============================================================================
+
+        const butterfly = new THREE.Group();
+        scene.add(butterfly);
+
+        // 动力学联动对象追踪列表
+        const animatedGears = [];
+        const dynamicPistons = [];
+
+        // 1. 胸腔主动力舱 (Thoracic Power Chassis)
+        const thoraxGroup = new THREE.Group();
+        butterfly.add(thoraxGroup);
+
+        // 钛合金胸腔框架环 (三层套环骨架)
+        for (let i = 0; i < 4; i++) {
+            const ringGeo = new THREE.TorusGeometry(0.7 - i * 0.08, 0.06, 12, 32);
+            const ringMesh = new THREE.Mesh(ringGeo, materials.primaryMetal);
+            ringMesh.position.z = (i - 1.5) * 0.38;
+            ringMesh.rotation.x = Math.PI / 2;
+            thoraxGroup.add(ringMesh);
+        }
+
+        // 纵向加固钛合金脊柱龙骨
+        for (let a = 0; a < 4; a++) {
+            const angle = (a / 4) * Math.PI * 2;
+            const strutGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.4, 8);
+            const strut = new THREE.Mesh(strutGeo, materials.secondaryMetal);
+            strut.position.set(Math.cos(angle) * 0.65, Math.sin(angle) * 0.65, 0);
+            strut.rotation.x = Math.PI / 2;
+            thoraxGroup.add(strut);
+        }
+
+        // 核心脉冲反应堆 (Suspended Quantum Fusion Core)
+        const coreGeo = new THREE.IcosahedronGeometry(0.38, 1);
+        const coreMesh = new THREE.Mesh(coreGeo, materials.glowCore);
+        thoraxGroup.add(coreMesh);
+
+        // 核心保护自转光环
+        const coreRing1 = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.025, 8, 32), materials.glowAccent);
+        const coreRing2 = new THREE.Mesh(new THREE.TorusGeometry(0.54, 0.02, 8, 32), materials.brassAccent);
+        thoraxGroup.add(coreRing1);
+        thoraxGroup.add(coreRing2);
+
+        // 环绕胸腔的高压发光导管 (Cooling Conduits)
+        const conduitCurveL = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0.3, 0.4, 0.6),
+            new THREE.Vector3(0.65, 0.2, 0.1),
+            new THREE.Vector3(0.55, -0.4, -0.4),
+            new THREE.Vector3(0.2, -0.3, -0.8)
+        ]);
+        const conduitGeoL = new THREE.TubeGeometry(conduitCurveL, 24, 0.035, 8, false);
+        const conduitMeshL = new THREE.Mesh(conduitGeoL, materials.glowAccent);
+        thoraxGroup.add(conduitMeshL);
+
+        const conduitCurveR = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(-0.3, 0.4, 0.6),
+            new THREE.Vector3(-0.65, 0.2, 0.1),
+            new THREE.Vector3(-0.55, -0.4, -0.4),
+            new THREE.Vector3(-0.2, -0.3, -0.8)
+        ]);
+        const conduitGeoR = new THREE.TubeGeometry(conduitCurveR, 24, 0.035, 8, false);
+        const conduitMeshR = new THREE.Mesh(conduitGeoR, materials.glowAccent);
+        thoraxGroup.add(conduitMeshR);
+
+        // 2. 胸腔精密齿轮传动组 (Differential Gearbox System)
+        // 中央主齿轮
+        const mainGearGeo = createGearGeometry(16, 0.42, 0.32, 0.08, 0.1, 4);
+        const mainGearMesh = new THREE.Mesh(mainGearGeo, materials.brassAccent);
+        mainGearMesh.position.set(0, 0.48, 0);
+        mainGearMesh.rotation.x = Math.PI / 2;
+        thoraxGroup.add(mainGearMesh);
+        animatedGears.push({ mesh: mainGearMesh, axis: 'z', speed: 2.0 });
+
+        // 左右从动传动齿轮 (连接至翼根轴)
+        const sideGearGeo = createGearGeometry(10, 0.26, 0.19, 0.06, 0.06, 3);
+
+        const leftGear = new THREE.Mesh(sideGearGeo, materials.secondaryMetal);
+        leftGear.position.set(0.48, 0.48, 0.15);
+        leftGear.rotation.x = Math.PI / 2;
+        thoraxGroup.add(leftGear);
+        animatedGears.push({ mesh: leftGear, axis: 'z', speed: -3.2 });
+
+        const rightGear = new THREE.Mesh(sideGearGeo, materials.secondaryMetal);
+        rightGear.position.set(-0.48, 0.48, 0.15);
+        rightGear.rotation.x = Math.PI / 2;
+        thoraxGroup.add(rightGear);
+        animatedGears.push({ mesh: rightGear, axis: 'z', speed: 3.2 });
+
+        // 3. 头部传感器与分节机械触角 (Sensory Head & Antennae)
+        const headGroup = new THREE.Group();
+        headGroup.position.set(0, 0.1, 0.85);
+        butterfly.add(headGroup);
+
+        // 头颅主装甲
+        const headBaseGeo = new THREE.ConeGeometry(0.32, 0.5, 6);
+        const headBase = new THREE.Mesh(headBaseGeo, materials.primaryMetal);
+        headBase.rotation.x = Math.PI / 2.2;
+        headGroup.add(headBase);
+
+        // 仿生复眼 (Compound Sensor Eyes)
+        const eyeGeo = new THREE.SphereGeometry(0.16, 16, 16);
+        const eyeL = new THREE.Mesh(eyeGeo, materials.secondaryMetal);
+        eyeL.position.set(0.24, 0.16, 0.15);
+        eyeL.scale.set(1.2, 0.8, 1);
+        headGroup.add(eyeL);
+
+        // 复眼瞳孔发光瞄准环
+        const pupilL = new THREE.Mesh(new THREE.RingGeometry(0.04, 0.08, 16), materials.glowCore);
+        pupilL.position.set(0.32, 0.22, 0.22);
+        pupilL.rotation.y = Math.PI / 4;
+        headGroup.add(pupilL);
+
+        const eyeR = eyeL.clone();
+        eyeR.position.x = -0.24;
+        headGroup.add(eyeR);
+
+        const pupilR = pupilL.clone();
+        pupilR.position.x = -0.32;
+        pupilR.rotation.y = -Math.PI / 4;
+        headGroup.add(pupilR);
+
+        // 左右分节多段机械触角 (Segmented Antennae)
+        const antennaeNodesL = [];
+        const antennaeNodesR = [];
+
+        function buildAntenna(isLeft) {
+            const rootAntenna = new THREE.Group();
+            rootAntenna.position.set(isLeft ? 0.14 : -0.14, 0.28, 0.22);
+            headGroup.add(rootAntenna);
+
+            let currentParent = rootAntenna;
+            const segments = 10;
+            const nodes = [];
+
+            for (let i = 0; i < segments; i++) {
+                const segGroup = new THREE.Group();
+                const segLength = 0.14 - i * 0.006;
+                const segRadius = 0.028 - i * 0.002;
+
+                // 节套筒
+                const cyl = new THREE.Mesh(
+                    new THREE.CylinderGeometry(segRadius * 0.7, segRadius, segLength, 8),
+                    materials.brassAccent
+                );
+                cyl.position.y = segLength / 2;
+                segGroup.add(cyl);
+
+                // 铰链球
+                const joint = new THREE.Mesh(new THREE.SphereGeometry(segRadius * 1.1, 8, 8), materials.secondaryMetal);
+                joint.position.y = segLength;
+                segGroup.add(joint);
+
+                segGroup.position.y = i === 0 ? 0 : 0.13;
+                // 预设向外弧形展开姿态
+                segGroup.rotation.z = (isLeft ? -1 : 1) * 0.12;
+                segGroup.rotation.x = 0.08;
+
+                currentParent.add(segGroup);
+                currentParent = segGroup;
+                nodes.push(segGroup);
+
+                // 触角尖端脉冲发光器
+                if (i === segments - 1) {
+                    const tipOrb = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 12), materials.glowCore);
+                    tipOrb.position.y = segLength + 0.02;
+                    segGroup.add(tipOrb);
+                }
+            }
+            return nodes;
+        }
+
+        antennaeNodesL.push(...buildAntenna(true));
+        antennaeNodesR.push(...buildAntenna(false));
+
+        // 4. 腹部多节钛合金排气尾身 (Articulated Abdomen)
+        const abdomenGroup = new THREE.Group();
+        abdomenGroup.position.set(0, -0.05, -0.65);
+        butterfly.add(abdomenGroup);
+
+        const abdomenSegments = [];
+        const numAbdomenRings = 7;
+        let parentAb = abdomenGroup;
+
+        for (let i = 0; i < numAbdomenRings; i++) {
+            const segContainer = new THREE.Group();
+            const scale = 1 - (i / numAbdomenRings) * 0.65;
+            const ringWidth = 0.28;
+
+            // 节外骨骼锥壳
+            const shellGeo = new THREE.CylinderGeometry(0.38 * scale, 0.44 * scale, ringWidth, 8, 1, true);
+            const shell = new THREE.Mesh(shellGeo, materials.primaryMetal);
+            shell.rotation.x = Math.PI / 2;
+            segContainer.add(shell);
+
+            // 内部发光脊髓光柱
+            const spinalGeo = new THREE.CylinderGeometry(0.12 * scale, 0.12 * scale, ringWidth * 1.1, 8);
+            const spinal = new THREE.Mesh(spinalGeo, materials.glowAccent);
+            spinal.rotation.x = Math.PI / 2;
+            segContainer.add(spinal);
+
+            // 侧向微型散热叶片
+            for (let side = -1; side <= 1; side += 2) {
+                const finGeo = new THREE.BoxGeometry(0.15 * scale, 0.02, 0.2);
+                const fin = new THREE.Mesh(finGeo, materials.brassAccent);
+                fin.position.set(side * 0.38 * scale, 0, 0);
+                fin.rotation.z = side * 0.3;
+                segContainer.add(fin);
+            }
+
+            segContainer.position.z = i === 0 ? 0 : -ringWidth * 0.88;
+            parentAb.add(segContainer);
+            parentAb = segContainer;
+            abdomenSegments.push(segContainer);
+        }
+
+        // 5. 机械足肢系统 (Hydraulic Legs)
+        function createLeg(isLeft, index) {
+            const legRoot = new THREE.Group();
+            const zOffset = 0.3 - index * 0.35;
+            legRoot.position.set(isLeft ? 0.45 : -0.45, -0.3, zOffset);
+            thoraxGroup.add(legRoot);
+
+            // 基座球铰
+            const hipJoint = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), materials.brassAccent);
+            legRoot.add(hipJoint);
+
+            // 大腿液压杆 (Femur)
+            const femur = new THREE.Group();
+            const femurTube = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 8), materials.secondaryMetal);
+            femurTube.position.y = -0.3;
+            femur.add(femurTube);
+            femur.rotation.z = (isLeft ? -1 : 1) * 0.7;
+            femur.rotation.x = 0.2 - index * 0.15;
+            legRoot.add(femur);
+
+            // 膝关节
+            const knee = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), materials.primaryMetal);
+            knee.position.y = -0.6;
+            femur.add(knee);
+
+            // 小腿仿生爪 (Tibia)
+            const tibia = new THREE.Group();
+            tibia.position.y = -0.6;
+            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.7, 8), materials.brassAccent);
+            claw.position.y = -0.35;
+            claw.rotation.x = Math.PI;
+            tibia.add(claw);
+            tibia.rotation.z = (isLeft ? 1 : -1) * 1.1;
+            femur.add(tibia);
+        }
+
+        for (let i = 0; i < 3; i++) {
+            createLeg(true, i);
+            createLeg(false, i);
+        }
+
+        // ============================================================================
+        // 6. 极其精细的镂空光电蝶翼系统 (Quad Cyber-Mechanical Wings)
+        // ============================================================================
+
+        const wings = {
+            foreL: null,
+            foreR: null,
+            hindL: null,
+            hindR: null
+        };
+
+        /**
+         * 创建前翅 (Forewing)
+         * 包含碳纤主翼梁、多级减重桁架、双层能量回路与边缘喷口
+         */
+        function buildForewing(isLeft) {
+            const wingRoot = new THREE.Group();
+            wingRoot.position.set(isLeft ? 0.42 : -0.42, 0.4, 0.25);
+            butterfly.add(wingRoot);
+
+            // 翅膀主几何形状 (2D Shape 拟真蝶翼外轮廓)
+            const wingShape = new THREE.Shape();
+            wingShape.moveTo(0, 0);
+            // 前缘优雅挺拔曲线延伸至翼尖
+            wingShape.bezierCurveTo(1.2, 0.8, 3.2, 2.2, 4.2, 3.8);
+            // 翼尖机械切角与弧度
+            wingShape.bezierCurveTo(4.4, 3.6, 4.5, 3.1, 4.1, 2.4);
+            // 外缘波浪形凹凸边缘
+            wingShape.bezierCurveTo(3.7, 1.4, 3.2, 0.5, 2.6, -0.5);
+            // 内缘收拢回到根部
+            wingShape.bezierCurveTo(1.8, -1.0, 0.8, -0.6, 0, 0);
+
+            // 1. 光电薄膜 (Photonic Membrane)
+            const membraneGeo = new THREE.ShapeGeometry(wingShape, 24);
+            const membraneMesh = new THREE.Mesh(membraneGeo, materials.wingMembrane);
+            membraneMesh.rotation.x = Math.PI / 2;
+            if (!isLeft) membraneMesh.scale.x = -1;
+            wingRoot.add(membraneMesh);
+
+            // 2. 覆盖的微棱镜线框网 (Wireframe Lattice)
+            const gridMesh = new THREE.Mesh(membraneGeo, materials.wingGrid);
+            gridMesh.rotation.x = Math.PI / 2;
+            gridMesh.position.y = 0.005;
+            if (!isLeft) gridMesh.scale.x = -1;
+            wingRoot.add(gridMesh);
+
+            // 3. 钛合金前缘主梁 (Primary Leading-Edge Spar)
+            const sparCurvePoints = [
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(1.2, 0.1, 0.8),
+                new THREE.Vector3(2.6, 0.18, 2.0),
+                new THREE.Vector3(4.2, 0.25, 3.8)
+            ];
+            if (!isLeft) {
+                sparCurvePoints.forEach(p => p.x *= -1);
+            }
+            const sparCurve = new THREE.CatmullRomCurve3(sparCurvePoints);
+            const sparGeo = new THREE.TubeGeometry(sparCurve, 32, 0.065, 8, false);
+            const sparMesh = new THREE.Mesh(sparGeo, materials.primaryMetal);
+            wingRoot.add(sparMesh);
+
+            // 4. 主梁上的多级减重镂空加强筋与分支肋梁 (Ribs & Struts)
+            for (let r = 1; r <= 6; r++) {
+                const t = r / 7;
+                const pointOnSpar = sparCurve.getPoint(t);
+
+                // 从主梁向后延伸的副肋骨
+                const ribLength = (1 - t * 0.4) * 1.6;
+                const ribDir = new THREE.Vector3(isLeft ? 0.35 : -0.35, -0.05, -0.9).normalize();
+                const ribEnd = pointOnSpar.clone().add(ribDir.clone().multiplyScalar(ribLength));
+
+                const ribCurve = new THREE.LineCurve3(pointOnSpar, ribEnd);
+                const ribGeo = new THREE.TubeGeometry(ribCurve, 6, 0.03, 6, false);
+                const ribMesh = new THREE.Mesh(ribGeo, materials.secondaryMetal);
+                wingRoot.add(ribMesh);
+
+                // 肋梁间的高亮连接节点
+                const jointSphere = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), materials.brassAccent);
+                jointSphere.position.copy(pointOnSpar);
+                wingRoot.add(jointSphere);
+            }
+
+            // 5. 翼尖高频离子推进微喷口 (Wingtip Thruster)
+            const tipPoint = sparCurvePoints[sparCurvePoints.length - 1];
+            const thrusterGeo = new THREE.CylinderGeometry(0.04, 0.08, 0.22, 8);
+            const thruster = new THREE.Mesh(thrusterGeo, materials.brassAccent);
+            thruster.position.copy(tipPoint);
+            thruster.rotation.z = (isLeft ? 1 : -1) * 0.8;
+            wingRoot.add(thruster);
+
+            // 喷口发光晶体
+            const emitterOrb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), materials.glowCore);
+            emitterOrb.position.copy(tipPoint);
+            wingRoot.add(emitterOrb);
+
+            // 6. 连接胸腔的液压活塞动力推杆 (Dynamic Piston Anchor)
+            const pistonArmAnchor = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), materials.secondaryMetal);
+            pistonArmAnchor.position.set(isLeft ? 0.35 : -0.35, -0.05, 0.15);
+            wingRoot.add(pistonArmAnchor);
+
+            // 创建位于胸腔的外套筒 (沿 Z 轴对齐以兼容 lookAt)
+            const cylBaseGeo = new THREE.CylinderGeometry(0.038, 0.038, 0.45, 8);
+            cylBaseGeo.rotateX(Math.PI / 2); // 使圆柱体轴线沿 Z 轴
+            const cylinderBase = new THREE.Mesh(cylBaseGeo, materials.primaryMetal);
+            cylinderBase.position.set(isLeft ? 0.28 : -0.28, 0.08, 0.1);
+            thoraxGroup.add(cylinderBase);
+
+            // 活塞内伸缩推杆 (同样沿 Z 轴对齐)
+            const rodGeo = new THREE.CylinderGeometry(0.022, 0.022, 0.4, 8);
+            rodGeo.rotateX(Math.PI / 2);
+            const pistonRod = new THREE.Mesh(rodGeo, materials.secondaryMetal);
+            cylinderBase.add(pistonRod);
+
+            dynamicPistons.push({
+                base: cylinderBase,
+                rod: pistonRod,
+                targetAnchor: pistonArmAnchor,
+                wingRoot: wingRoot
+            });
+
+            return {
+                root: wingRoot,
+                tip: emitterOrb,
+                isLeft: isLeft
+            };
+        }
+
+        /**
+         * 创建后翅 (Hindwing)
+         * 稍短而宽，带有优雅的机械燕尾与配重鳍片
+         */
+        function buildHindwing(isLeft) {
+            const wingRoot = new THREE.Group();
+            wingRoot.position.set(isLeft ? 0.38 : -0.38, 0.3, -0.05);
+            butterfly.add(wingRoot);
+
+            const wingShape = new THREE.Shape();
+            wingShape.moveTo(0, 0);
+            wingShape.bezierCurveTo(0.8, -0.2, 2.2, -0.6, 2.8, -1.8);
+            // 燕尾突出尖端 (Mechanical Tail Streamer)
+            wingShape.bezierCurveTo(2.9, -2.4, 2.5, -3.2, 2.2, -3.5);
+            wingShape.bezierCurveTo(1.9, -3.2, 1.8, -2.4, 1.4, -2.0);
+            wingShape.bezierCurveTo(0.9, -1.5, 0.4, -0.8, 0, 0);
+
+            // 光电薄膜
+            const membraneGeo = new THREE.ShapeGeometry(wingShape, 20);
+            const membraneMesh = new THREE.Mesh(membraneGeo, materials.wingMembrane);
+            membraneMesh.rotation.x = Math.PI / 2;
+            if (!isLeft) membraneMesh.scale.x = -1;
+            wingRoot.add(membraneMesh);
+
+            // 主支撑梁
+            const sparPoints = [
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(1.2, -0.05, -0.7),
+                new THREE.Vector3(2.2, -0.12, -1.8),
+                new THREE.Vector3(2.2, -0.18, -3.5)
+            ];
+            if (!isLeft) sparPoints.forEach(p => p.x *= -1);
+
+            const sparCurve = new THREE.CatmullRomCurve3(sparPoints);
+            const sparGeo = new THREE.TubeGeometry(sparCurve, 24, 0.045, 8, false);
+            const sparMesh = new THREE.Mesh(sparGeo, materials.primaryMetal);
+            wingRoot.add(sparMesh);
+
+            // 燕尾末端配重光球
+            const tailOrb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 12), materials.glowAccent);
+            tailOrb.position.copy(sparPoints[sparPoints.length - 1]);
+            wingRoot.add(tailOrb);
+
+            return {
+                root: wingRoot,
+                tip: tailOrb,
+                isLeft: isLeft
+            };
+        }
+
+        wings.foreL = buildForewing(true);
+        wings.foreR = buildForewing(false);
+        wings.hindL = buildHindwing(true);
+        wings.hindR = buildHindwing(false);
+
+        // ============================================================================
+        // 7. 空间星尘与微观发光粒子尾迹系统 (Photon Particle Vortex)
+        // ============================================================================
+
+        const MAX_PARTICLES = 300;
+        const particleGeo = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(MAX_PARTICLES * 3);
+        const particleAlphas = new Float32Array(MAX_PARTICLES);
+        const particleVelocities = [];
+
+        for (let i = 0; i < MAX_PARTICLES; i++) {
+            particlePositions[i * 3] = 0;
+            particlePositions[i * 3 + 1] = -100; // 初始隐藏在不可见区
+            particlePositions[i * 3 + 2] = 0;
+            particleAlphas[i] = 0;
+            particleVelocities.push(new THREE.Vector3());
+        }
+
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        particleGeo.setAttribute('alpha', new THREE.BufferAttribute(particleAlphas, 1));
+
+        // 粒子材质着色器
+        const particleMaterial = new THREE.PointsMaterial({
+            size: 0.18,
+            color: PALETTES.cyber.glowCore,
+            transparent: true,
+            opacity: 0.85,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const particleSystem = new THREE.Points(particleGeo, particleMaterial);
+        scene.add(particleSystem);
+
+        let particleCursor = 0;
+        function spawnParticle(worldPos, velocitySpread = 0.05) {
+            if (!CONFIG.particlesEnabled) return;
+            const idx = particleCursor;
+            particlePositions[idx * 3] = worldPos.x + (Math.random() - 0.5) * 0.1;
+            particlePositions[idx * 3 + 1] = worldPos.y + (Math.random() - 0.5) * 0.1;
+            particlePositions[idx * 3 + 2] = worldPos.z + (Math.random() - 0.5) * 0.1;
+            particleAlphas[idx] = 1.0;
+
+            particleVelocities[idx].set(
+                (Math.random() - 0.5) * velocitySpread,
+                -0.02 - Math.random() * velocitySpread,
+                -0.04 - Math.random() * velocitySpread
+            );
+
+            particleCursor = (particleCursor + 1) % MAX_PARTICLES;
+        }
+
+        // 环境微星尘 (Ambient Stardust Background)
+        const bgStarCount = 500;
+        const bgStarGeo = new THREE.BufferGeometry();
+        const bgStarPos = new Float32Array(bgStarCount * 3);
+        for (let i = 0; i < bgStarCount * 3; i += 3) {
+            bgStarPos[i] = (Math.random() - 0.5) * 35;
+            bgStarPos[i + 1] = (Math.random() - 0.5) * 35;
+            bgStarPos[i + 2] = (Math.random() - 0.5) * 35;
+        }
+        bgStarGeo.setAttribute('position', new THREE.BufferAttribute(bgStarPos, 3));
+        const bgStarMat = new THREE.PointsMaterial({
+            size: 0.08,
+            color: 0x70a6ff,
+            transparent: true,
+            opacity: 0.45
+        });
+        const ambientStars = new THREE.Points(bgStarGeo, bgStarMat);
+        scene.add(ambientStars);
+
+        // ============================================================================
+        // 8. 实时动画与动力学约束引擎 (Kinematics & Simulation Loop)
+        // ============================================================================
+
+        const clock = new THREE.Clock();
+        const vTempA = new THREE.Vector3();
+        const vTempB = new THREE.Vector3();
+
+        function updateAnimation() {
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime() * CONFIG.speedMultiplier;
+
+            // 模式参数调节
+            let flapFreq = 6.5;
+            let flapAmp = 0.55;
+            let twistAmp = 0.22;
+            let lagPhase = 0.35; // 前后翅与扭转相位滞后
+
+            if (CONFIG.flightMode === 'rapid') {
+                flapFreq = 14.0;
+                flapAmp = 0.38;
+            } else if (CONFIG.flightMode === 'glide') {
+                flapFreq = 1.2;
+                flapAmp = 0.12;
+            } else if (CONFIG.flightMode === 'stop') {
+                flapFreq = 0.0;
+                flapAmp = 0.0;
+            }
+
+            const flareRad = (CONFIG.flareOffset * Math.PI) / 180;
+
+            // 1. 复合拍翅运动学 (Multi-axial Flapping Kinetics)
+            if (flapFreq > 0) {
+                // 主打角
+                const stroke = Math.sin(time * flapFreq);
+                const strokeHind = Math.sin(time * flapFreq - lagPhase);
+                // 攻角弹性扭转 (Twisting Aero-Phase)
+                const twist = Math.cos(time * flapFreq) * twistAmp;
+                const twistHind = Math.cos(time * flapFreq - lagPhase) * (twistAmp * 0.8);
+
+                // 左前翅
+                wings.foreL.root.rotation.z = -stroke * flapAmp + flareRad;
+                wings.foreL.root.rotation.x = twist;
+                wings.foreL.root.rotation.y = stroke * 0.15;
+
+                // 右前翅 (对称镜像)
+                wings.foreR.root.rotation.z = stroke * flapAmp - flareRad;
+                wings.foreR.root.rotation.x = twist;
+                wings.foreR.root.rotation.y = -stroke * 0.15;
+
+                // 左后翅
+                wings.hindL.root.rotation.z = -strokeHind * (flapAmp * 0.85) + flareRad * 0.8;
+                wings.hindL.root.rotation.x = twistHind;
+
+                // 右后翅
+                wings.hindR.root.rotation.z = strokeHind * (flapAmp * 0.85) - flareRad * 0.8;
+                wings.hindR.root.rotation.x = twistHind;
+
+                // 在下压顶点释放发光粒子流
+                if (stroke > 0.7 && Math.random() < 0.6) {
+                    wings.foreL.tip.getWorldPosition(vTempA);
+                    spawnParticle(vTempA);
+                    wings.foreR.tip.getWorldPosition(vTempB);
+                    spawnParticle(vTempB);
+                }
+            } else {
+                // 静态机械展台模式
+                wings.foreL.root.rotation.set(0.1, 0.1, flareRad);
+                wings.foreR.root.rotation.set(0.1, -0.1, -flareRad);
+                wings.hindL.root.rotation.set(0.05, 0, flareRad * 0.8);
+                wings.hindR.root.rotation.set(0.05, 0, -flareRad * 0.8);
+            }
+
+            // 2. 齿轮系啮合旋转动力学
+            animatedGears.forEach(gear => {
+                const rotSpeed = gear.speed * (flapFreq > 0 ? flapFreq * 0.25 : 0.2);
+                gear.mesh.rotation[gear.axis] += rotSpeed * delta;
+            });
+
+            // 核心微反应堆光环自转
+            coreRing1.rotation.x += delta * 1.5;
+            coreRing1.rotation.y += delta * 2.0;
+            coreRing2.rotation.y -= delta * 1.8;
+            coreRing2.rotation.z += delta * 1.2;
+            coreMesh.rotation.y += delta * 0.8;
+
+            // 核心呼吸光效
+            const pulse = (Math.sin(time * 4.0) + 1.0) * 0.5;
+            reactorPointLight.intensity = 2.5 + pulse * 2.0;
+
+            // 3. 液压推杆动力学约束 (LookAt & Distance Stretching)
+            butterfly.updateMatrixWorld(true);
+            dynamicPistons.forEach(p => {
+                p.targetAnchor.getWorldPosition(vTempA);
+                p.base.lookAt(vTempA);
+                p.base.getWorldPosition(vTempB);
+                const currentDist = vTempB.distanceTo(vTempA);
+                // 活塞推杆沿 Z 轴自适应滑动
+                p.rod.position.z = THREE.MathUtils.clamp(currentDist * 0.45, 0.05, 0.35);
+            });
+
+            // 4. 腹部仿生呼吸与游动波动 (Abdomen Wave Kinetics)
+            abdomenSegments.forEach((seg, index) => {
+                const segPhase = time * 2.5 - index * 0.45;
+                seg.rotation.x = Math.sin(segPhase) * 0.08;
+                seg.rotation.y = Math.cos(segPhase * 0.7) * 0.04;
+            });
+
+            // 5. 机械触角微颤抖动 (Antennae Servo Micro-vibration)
+            const antTwitch = Math.sin(time * 5.0) * 0.04 + Math.sin(time * 12.0) * 0.02;
+            antennaeNodesL.forEach((node, i) => {
+                node.rotation.z = -0.12 - antTwitch * (i * 0.1);
+            });
+            antennaeNodesR.forEach((node, i) => {
+                node.rotation.z = 0.12 + antTwitch * (i * 0.1);
+            });
+
+            // 6. 蝴蝶整体空间巡航漂浮 (Lissajous Micro-flight Path)
+            if (CONFIG.flightMode !== 'stop') {
+                butterfly.position.y = Math.sin(time * 1.8) * 0.25;
+                butterfly.position.x = Math.cos(time * 0.9) * 0.15;
+                butterfly.rotation.x = Math.sin(time * 1.8) * 0.06;
+                butterfly.rotation.z = Math.sin(time * 0.9) * 0.04;
+            } else {
+                butterfly.position.set(0, 0, 0);
+                butterfly.rotation.set(0, 0, 0);
+            }
+
+            // 7. 粒子更新与衰减
+            const posAttr = particleGeo.attributes.position;
+            const alphaAttr = particleGeo.attributes.alpha;
+            for (let i = 0; i < MAX_PARTICLES; i++) {
+                if (particleAlphas[i] > 0) {
+                    particlePositions[i * 3] += particleVelocities[i].x;
+                    particlePositions[i * 3 + 1] += particleVelocities[i].y;
+                    particlePositions[i * 3 + 2] += particleVelocities[i].z;
+                    particleAlphas[i] -= delta * 0.85;
+                    if (particleAlphas[i] <= 0) {
+                        particlePositions[i * 3 + 1] = -100;
+                    }
+                }
+            }
+            posAttr.needsUpdate = true;
+            alphaAttr.needsUpdate = true;
+
+            // 环境星尘缓动
+            ambientStars.rotation.y = time * 0.02;
+        }
+
+        // ============================================================================
+        // 9. 相机巡航平滑过渡控制系统
+        // ============================================================================
+
+        const CAM_PRESETS = {
+            macro: { pos: new THREE.Vector3(0, 5, 11), target: new THREE.Vector3(0, 0, 0) },
+            engine: { pos: new THREE.Vector3(1.2, 1.8, 1.8), target: new THREE.Vector3(0, 0.2, 0.1) },
+            head: { pos: new THREE.Vector3(0, 1.2, 2.6), target: new THREE.Vector3(0, 0.2, 0.9) },
+            wing: { pos: new THREE.Vector3(3.2, 3.0, 3.2), target: new THREE.Vector3(2.0, 0.8, 1.5) }
+        };
+
+        let isTransitioningCam = false;
+        let camTargetPos = camera.position.clone();
+        let camTargetLook = controls.target.clone();
+
+        function switchCameraPreset(key) {
+            const preset = CAM_PRESETS[key];
+            if (!preset) return;
+            camTargetPos.copy(preset.pos);
+            camTargetLook.copy(preset.target);
+            isTransitioningCam = true;
+        }
+
+        function updateCameraTransition() {
+            if (isTransitioningCam) {
+                camera.position.lerp(camTargetPos, 0.06);
+                controls.target.lerp(camTargetLook, 0.06);
+                if (camera.position.distanceTo(camTargetPos) < 0.05) {
+                    isTransitioningCam = false;
+                }
+            }
+        }
+
+        // ============================================================================
+        // 10. 主题与样式动态热更新
+        // ============================================================================
+
+        function applyTheme(themeKey) {
+            CONFIG.theme = themeKey;
+            const pal = PALETTES[themeKey];
+
+            // 更新背景和雾效
+            renderer.setClearColor(pal.background);
+            scene.fog.color.setHex(pal.fogColor);
+
+            // 更新材质颜色
+            materials.primaryMetal.color.setHex(pal.primaryMetal);
+            materials.secondaryMetal.color.setHex(pal.secondaryMetal);
+            materials.brassAccent.color.setHex(pal.brassAccent);
+            materials.glowCore.color.setHex(pal.glowCore);
+            materials.glowAccent.color.setHex(pal.glowAccent);
+            materials.wingMembrane.color.setHex(pal.membraneColor);
+            materials.wingMembrane.opacity = pal.membraneOpacity;
+            materials.wingGrid.color.setHex(pal.secondaryMetal);
+
+            // 更新点光源与粒子色彩
+            reactorPointLight.color.setHex(pal.glowCore);
+            particleMaterial.color.setHex(pal.glowCore);
+        }
+
+        // ============================================================================
+        // 11. UI 事件交互绑定
+        // ============================================================================
+
+        // 视角按钮
+        document.querySelectorAll('[data-cam]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-cam]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                switchCameraPreset(btn.dataset.cam);
+            });
+        });
+
+        // 主题按钮
+        document.querySelectorAll('[data-theme]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-theme]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                applyTheme(btn.dataset.theme);
+            });
+        });
+
+        // 飞行模式
+        document.querySelectorAll('[data-flight]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-flight]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                CONFIG.flightMode = btn.dataset.flight;
+            });
+        });
+
+        // 滑块交互
+        const sliderSpeed = document.getElementById('slider-speed');
+        const valSpeed = document.getElementById('val-speed');
+        sliderSpeed.addEventListener('input', (e) => {
+            CONFIG.speedMultiplier = parseFloat(e.target.value);
+            valSpeed.textContent = CONFIG.speedMultiplier.toFixed(1) + 'x';
+        });
+
+        const sliderBloom = document.getElementById('slider-bloom');
+        const valBloom = document.getElementById('val-bloom');
+        sliderBloom.addEventListener('input', (e) => {
+            CONFIG.bloomStrength = parseFloat(e.target.value);
+            bloomPass.strength = CONFIG.bloomStrength;
+            valBloom.textContent = CONFIG.bloomStrength.toFixed(2);
+        });
+
+        const sliderSpin = document.getElementById('slider-spin');
+        const valSpin = document.getElementById('val-spin');
+        sliderSpin.addEventListener('input', (e) => {
+            CONFIG.autoRotateSpeed = parseFloat(e.target.value);
+            controls.autoRotate = CONFIG.autoRotateSpeed > 0;
+            controls.autoRotateSpeed = CONFIG.autoRotateSpeed;
+            valSpin.textContent = CONFIG.autoRotateSpeed.toFixed(1);
+        });
+
+        const sliderFlare = document.getElementById('slider-flare');
+        const valFlare = document.getElementById('val-flare');
+        sliderFlare.addEventListener('input', (e) => {
+            CONFIG.flareOffset = parseInt(e.target.value);
+            valFlare.textContent = (CONFIG.flareOffset > 0 ? '+' : '') + CONFIG.flareOffset + '°';
+        });
+
+        // 线框透视切换
+        const btnWireframe = document.getElementById('btn-wireframe');
+        btnWireframe.addEventListener('click', () => {
+            CONFIG.wireframe = !CONFIG.wireframe;
+            btnWireframe.classList.toggle('active', CONFIG.wireframe);
+            materials.primaryMetal.wireframe = CONFIG.wireframe;
+            materials.secondaryMetal.wireframe = CONFIG.wireframe;
+            materials.brassAccent.wireframe = CONFIG.wireframe;
+        });
+
+        // 粒子开关
+        const btnParticles = document.getElementById('btn-particles');
+        btnParticles.addEventListener('click', () => {
+            CONFIG.particlesEnabled = !CONFIG.particlesEnabled;
+            btnParticles.classList.toggle('active', CONFIG.particlesEnabled);
+            particleSystem.visible = CONFIG.particlesEnabled;
+        });
+
+        // 移动端折叠菜单
+        const toggleBtn = document.getElementById('toggle-panel-btn');
+        const panel = document.getElementById('control-panel');
+        toggleBtn.addEventListener('click', () => {
+            panel.classList.toggle('show');
+        });
+
+        // 窗口缩放适配
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 双击聚焦
+        window.addEventListener('dblclick', () => {
+            switchCameraPreset('engine');
+            document.querySelectorAll('[data-cam]').forEach(b => b.classList.remove('active'));
+            document.querySelector('[data-cam="engine"]').classList.add('active');
+        });
+
+        // ============================================================================
+        // 12. 渲染主循环
+        // ============================================================================
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updateAnimation();
+            updateCameraTransition();
+            controls.update();
+            composer.render();
+        }
+
+        // 隐藏加载转场并启动
+        window.addEventListener('DOMContentLoaded', () => {
+            const loader = document.getElementById('loading-screen');
+            setTimeout(() => {
+                loader.style.opacity = '0';
+                setTimeout(() => {
+                    loader.style.visibility = 'hidden';
+                }, 800);
+            }, 600);
+            animate();
+        });
+    </script>
+</body>
+</html>

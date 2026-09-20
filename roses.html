@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Roses given, fragrance in hand. · 赠人玫瑰，手有余香</title>
+    <!-- 引入优雅的顶级英文手写字体与中文字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=MonteCarlo&family=Dancing+Script:wght@600;700&family=Noto+Serif+SC:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050711;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* 沉浸式星夜与光晕背景 */
+        #bg-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            display: block;
+        }
+
+        /* 全屏中心内容容器 */
+        .stage {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            pointer-events: none;
+        }
+
+        /* 主标题手写体区域 */
+        .handwriting-container {
+            position: relative;
+            max-width: 92vw;
+            margin-bottom: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: baseline;
+            row-gap: 8px;
+            column-gap: 16px;
+        }
+
+        /* 英文手写字体：首选 Great Vibes / MonteCarlo / Snell Roundhand */
+        .handwriting-text {
+            font-family: 'Great Vibes', 'MonteCarlo', 'Snell Roundhand', 'Brush Script MT', 'Dancing Script', cursive;
+            font-size: clamp(42px, 7.2vw, 86px);
+            line-height: 1.25;
+            letter-spacing: 0.02em;
+            background: linear-gradient(135deg, #ffffff 0%, #ffe0e6 25%, #ff758f 65%, #ff4d6d 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 25px rgba(255, 117, 143, 0.65)) drop-shadow(0 0 50px rgba(255, 77, 109, 0.4));
+            position: relative;
+            display: inline-block;
+        }
+
+        /* 单个单词与字母的书写流动容器 */
+        .word {
+            display: inline-flex;
+            white-space: nowrap;
+        }
+        .char {
+            display: inline-block;
+            opacity: 0;
+            transform: translateY(12px) scale(0.92);
+            filter: blur(8px);
+            transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                        transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                        filter 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .char.written {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0px);
+        }
+
+        /* 笔尖星芒光标 */
+        #pen-spark {
+            position: fixed;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 0 15px 4px #ff758f, 0 0 30px 8px #ff4d6d, 0 0 50px 15px rgba(255, 255, 255, 0.9);
+            pointer-events: none;
+            z-index: 15;
+            opacity: 0;
+            transition: opacity 0.3s;
+            transform: translate(-50%, -50%);
+        }
+
+        /* 优雅的分割线 */
+        .divider-line {
+            opacity: 0;
+            transform: scaleX(0);
+            width: clamp(140px, 30vw, 280px);
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 182, 193, 0.8), transparent);
+            margin: 10px auto 20px auto;
+            position: relative;
+            transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .divider-line.show {
+            opacity: 1;
+            transform: scaleX(1);
+        }
+        .divider-flower {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            color: #ff758f;
+            text-shadow: 0 0 10px rgba(255, 117, 143, 0.8);
+            background: #050711;
+            padding: 0 10px;
+        }
+
+        /* 中文书法诗句 */
+        .sub-poetry {
+            font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+            font-weight: 300;
+            font-size: clamp(17px, 2.8vw, 24px);
+            letter-spacing: 0.36em;
+            color: rgba(255, 220, 230, 0.88);
+            text-shadow: 0 0 20px rgba(255, 117, 143, 0.45);
+            opacity: 0;
+            transform: translateY(18px);
+            transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+            margin-bottom: 35px;
+        }
+        .sub-poetry.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 底部操作与跳转按钮 */
+        .nav-actions {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .nav-actions.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .btn-enter-lab {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 28px;
+            background: linear-gradient(135deg, rgba(255, 45, 85, 0.85) 0%, rgba(217, 4, 41, 0.85) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 30px;
+            color: #ffffff;
+            font-size: 14.5px;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            text-decoration: none;
+            box-shadow: 0 8px 25px rgba(255, 45, 85, 0.45), 0 0 20px rgba(255, 117, 143, 0.3);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .btn-enter-lab:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 12px 32px rgba(255, 45, 85, 0.65), 0 0 30px rgba(255, 117, 143, 0.5);
+            background: linear-gradient(135deg, rgba(255, 65, 105, 0.95) 0%, rgba(230, 10, 50, 0.95) 100%);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 11px 20px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 30px;
+            color: #ffd6e0;
+            font-size: 13.5px;
+            text-decoration: none;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.14);
+            border-color: rgba(255, 180, 200, 0.4);
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        /* 顶部温馨提示 / 音效提示 */
+        .top-banner {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            font-size: 12px;
+            letter-spacing: 0.12em;
+            color: rgba(255, 255, 255, 0.45);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 飘落花瓣与深空星光画布 -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- 虚拟笔尖星芒 -->
+    <div id="pen-spark"></div>
+
+    <div class="top-banner">
+        <span>✨ 点击屏幕任意位置可洒落花瓣与星尘</span>
+    </div>
+
+    <div class="stage">
+        <!-- 手写主标题 -->
+        <div class="handwriting-container">
+            <h1 class="handwriting-text" id="handwriting-title">
+                <!-- 由 JS 动态打散为单词与字母，呈现笔墨流转效果 -->
+            </h1>
+        </div>
+
+        <!-- 诗意分割线 -->
+        <div class="divider-line" id="divider">
+            <span class="divider-flower">❀</span>
+        </div>
+
+        <!-- 中文书法诗文 -->
+        <p class="sub-poetry" id="sub-poetry">
+            赠 人 玫 瑰 ， 手 有 余 香
+        </p>
+
+        <!-- 导航按钮 -->
+        <div class="nav-actions" id="nav-actions">
+            <a href="index.html" class="btn-enter-lab">
+                <span>🌹</span> 探索 3D 粒子玫瑰实验室
+            </a>
+            <button class="btn-secondary" onclick="restartWriting()">
+                <span>↺</span> 重新书写
+            </button>
+            <button class="btn-secondary" id="music-btn" onclick="toggleChime()">
+                <span>🎵</span> 启奏余香心音
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ================= 1. 手写文本逐笔挥毫动效 =================
+        const sentence = "Roses given, fragrance in hand.";
+        const titleEl = document.getElementById('handwriting-title');
+        const penSpark = document.getElementById('pen-spark');
+        const dividerEl = document.getElementById('divider');
+        const subPoetryEl = document.getElementById('sub-poetry');
+        const navActionsEl = document.getElementById('nav-actions');
+
+        let charElements = [];
+
+        function buildLetters() {
+            titleEl.innerHTML = '';
+            charElements = [];
+            const words = sentence.split(' ');
+
+            words.forEach((wordText, wordIdx) => {
+                const wordSpan = document.createElement('span');
+                wordSpan.className = 'word';
+
+                for (let i = 0; i < wordText.length; i++) {
+                    const charSpan = document.createElement('span');
+                    charSpan.className = 'char';
+                    charSpan.textContent = wordText[i];
+                    wordSpan.appendChild(charSpan);
+                    charElements.push(charSpan);
+                }
+
+                titleEl.appendChild(wordSpan);
+
+                // 单词之间添加空格
+                if (wordIdx < words.length - 1) {
+                    const space = document.createElement('span');
+                    space.innerHTML = '&nbsp;';
+                    titleEl.appendChild(space);
+                }
+            });
+        }
+
+        let isWriting = false;
+
+        function startHandwriting() {
+            if (isWriting) return;
+            isWriting = true;
+
+            // 重置状态
+            dividerEl.classList.remove('show');
+            subPoetryEl.classList.remove('show');
+            navActionsEl.classList.remove('show');
+            charElements.forEach(c => c.classList.remove('written'));
+            penSpark.style.opacity = '1';
+
+            let idx = 0;
+            const stepDelay = 95; // 字母书写流速 (毫秒)
+
+            function writeNext() {
+                if (idx < charElements.length) {
+                    const el = charElements[idx];
+                    el.classList.add('written');
+
+                    // 让笔尖星芒跟随当前书写的字母
+                    const rect = el.getBoundingClientRect();
+                    penSpark.style.left = (rect.right + 2) + 'px';
+                    penSpark.style.top = (rect.top + rect.height * 0.6) + 'px';
+
+                    // 每次落笔产生微小的余香音符 (Web Audio)
+                    if (audioEnabled && idx % 3 === 0) {
+                        playGentleNote(idx);
+                    }
+
+                    // 产生小火花粒子
+                    burstSparks(rect.right, rect.top + rect.height * 0.6, 3);
+
+                    idx++;
+                    setTimeout(writeNext, stepDelay + (Math.random() * 25));
+                } else {
+                    // 书写完成
+                    setTimeout(() => {
+                        penSpark.style.opacity = '0';
+                        dividerEl.classList.add('show');
+                    }, 200);
+
+                    setTimeout(() => {
+                        subPoetryEl.classList.add('show');
+                    }, 550);
+
+                    setTimeout(() => {
+                        navActionsEl.classList.add('show');
+                        isWriting = false;
+                    }, 1100);
+                }
+            }
+
+            // 起笔
+            const firstRect = charElements[0].getBoundingClientRect();
+            penSpark.style.left = firstRect.left + 'px';
+            penSpark.style.top = (firstRect.top + firstRect.height * 0.5) + 'px';
+
+            setTimeout(writeNext, 400);
+        }
+
+        function restartWriting() {
+            startHandwriting();
+        }
+
+        // ================= 2. 飘落花瓣与星尘粒子背景系统 (Canvas) =================
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initStars();
+        });
+
+        // 飘落花瓣群
+        const PETAL_COUNT = 38;
+        const petals = [];
+        const petalColors = ['#ffccd5', '#ffb3c1', '#ff8fa3', '#ff4d6d', '#ff758f', '#e63946'];
+
+        for (let i = 0; i < PETAL_COUNT; i++) {
+            petals.push({
+                x: Math.random() * width,
+                y: Math.random() * height - height,
+                vx: (Math.random() - 0.5) * 1.2,
+                vy: 1.2 + Math.random() * 2.2,
+                size: 8 + Math.random() * 14,
+                angle: Math.random() * Math.PI * 2,
+                vAngle: (Math.random() - 0.5) * 0.035,
+                color: petalColors[Math.floor(Math.random() * petalColors.length)],
+                opacity: 0.45 + Math.random() * 0.45,
+                curl: Math.random() * Math.PI,
+                vCurl: 0.02 + Math.random() * 0.03
+            });
+        }
+
+        // 背景微光星尘
+        const STAR_COUNT = 85;
+        const stars = [];
+
+        function initStars() {
+            stars.length = 0;
+            for (let i = 0; i < STAR_COUNT; i++) {
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    r: 0.5 + Math.random() * 1.5,
+                    alpha: 0.2 + Math.random() * 0.7,
+                    speed: 0.01 + Math.random() * 0.02,
+                    phase: Math.random() * Math.PI * 2
+                });
+            }
+        }
+        initStars();
+
+        // 交互火花点阵
+        const sparks = [];
+
+        function burstSparks(x, y, count = 8) {
+            for (let i = 0; i < count; i++) {
+                const ang = Math.random() * Math.PI * 2;
+                const spd = 1.0 + Math.random() * 3.5;
+                sparks.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(ang) * spd,
+                    vy: Math.sin(ang) * spd - 0.5,
+                    life: 1.0,
+                    decay: 0.03 + Math.random() * 0.04,
+                    color: Math.random() > 0.4 ? '#ffccd5' : '#ffffff',
+                    size: 1.5 + Math.random() * 2.0
+                });
+            }
+        }
+
+        // 动画渲染循环
+        let tick = 0;
+        function render() {
+            tick++;
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. 绘制深邃夜空渐变与柔和星云
+            const grad = ctx.createRadialGradient(width * 0.5, height * 0.45, 50, width * 0.5, height * 0.45, width * 0.75);
+            grad.addColorStop(0, '#160d1f');
+            grad.addColorStop(0.4, '#0b0c1c');
+            grad.addColorStop(1, '#04050a');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, width, height);
+
+            // 2. 绘制星尘闪烁
+            for (const s of stars) {
+                const a = s.alpha + Math.sin(tick * s.speed + s.phase) * 0.3;
+                ctx.fillStyle = `rgba(255, 230, 240, ${Math.max(0.1, Math.min(1, a))})`;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 3. 绘制花瓣飘落 (自然翻卷物理模型)
+            for (const p of petals) {
+                p.y += p.vy;
+                p.x += p.vx + Math.sin(tick * 0.02 + p.curl) * 0.75;
+                p.angle += p.vAngle;
+                p.curl += p.vCurl;
+
+                if (p.y > height + 30) {
+                    p.y = -30;
+                    p.x = Math.random() * width;
+                }
+                if (p.x < -30) p.x = width + 20;
+                if (p.x > width + 30) p.x = -20;
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.angle);
+                // 3D 翻卷缩放
+                const scaleX = Math.cos(p.curl);
+                ctx.scale(scaleX, 1);
+
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.opacity * Math.abs(scaleX) * 0.85 + 0.15;
+                ctx.beginPath();
+                // 绘制心形/水滴玫瑰花瓣
+                ctx.moveTo(0, -p.size * 0.6);
+                ctx.bezierCurveTo(p.size * 0.7, -p.size * 0.5, p.size * 0.8, p.size * 0.5, 0, p.size * 0.8);
+                ctx.bezierCurveTo(-p.size * 0.8, p.size * 0.5, -p.size * 0.7, -p.size * 0.5, 0, -p.size * 0.6);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // 4. 绘制火花与笔触光尘
+            for (let i = sparks.length - 1; i >= 0; i--) {
+                const sp = sparks[i];
+                sp.x += sp.vx;
+                sp.y += sp.vy;
+                sp.life -= sp.decay;
+
+                if (sp.life <= 0) {
+                    sparks.splice(i, 1);
+                    continue;
+                }
+
+                ctx.fillStyle = sp.color;
+                ctx.globalAlpha = sp.life;
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, sp.size * sp.life, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        // ================= 3. 屏幕点击撒花与星光交互 =================
+        window.addEventListener('pointerdown', (e) => {
+            burstSparks(e.clientX, e.clientY, 15);
+            // 生成一簇飘飞的新花瓣
+            for (let i = 0; i < 4; i++) {
+                petals.push({
+                    x: e.clientX + (Math.random() - 0.5) * 30,
+                    y: e.clientY + (Math.random() - 0.5) * 30,
+                    vx: (Math.random() - 0.5) * 3.5,
+                    vy: 1.0 + Math.random() * 2.0,
+                    size: 10 + Math.random() * 12,
+                    angle: Math.random() * Math.PI * 2,
+                    vAngle: (Math.random() - 0.5) * 0.05,
+                    color: petalColors[Math.floor(Math.random() * petalColors.length)],
+                    opacity: 0.85,
+                    curl: Math.random() * Math.PI,
+                    vCurl: 0.04
+                });
+            }
+            if (petals.length > 70) petals.splice(0, 4);
+
+            if (audioEnabled) {
+                playChimeChord();
+            }
+        });
+
+        // ================= 4. 纯净 Web Audio 余香心音 (无任何外部音频文件) =================
+        let audioCtx = null;
+        let audioEnabled = false;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function toggleChime() {
+            audioEnabled = !audioEnabled;
+            const btn = document.getElementById('music-btn');
+            if (audioEnabled) {
+                getAudioContext();
+                btn.innerHTML = '<span>🔊</span> 余香心音: 开启';
+                btn.style.background = 'rgba(255, 45, 85, 0.25)';
+                btn.style.borderColor = 'rgba(255, 117, 143, 0.6)';
+                playChimeChord();
+            } else {
+                btn.innerHTML = '<span>🎵</span> 启奏余香心音';
+                btn.style.background = 'rgba(255, 255, 255, 0.06)';
+                btn.style.borderColor = 'rgba(255, 255, 255, 0.16)';
+            }
+        }
+
+        // 浪漫五度琶音 (C5, D5, E5, G5, A5, C6)
+        const PENTATONIC = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50, 1174.66];
+
+        function playGentleNote(idx) {
+            try {
+                const ctx = getAudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                const freq = PENTATONIC[idx % PENTATONIC.length];
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+                gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.04, ctx.currentTime + 0.03);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.65);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start();
+                osc.stop(ctx.currentTime + 0.7);
+            } catch (e) {}
+        }
+
+        function playChimeChord() {
+            try {
+                const ctx = getAudioContext();
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                    setTimeout(() => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+                        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.06, ctx.currentTime + 0.05);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.2);
+
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start();
+                        osc.stop(ctx.currentTime + 1.3);
+                    }, i * 90);
+                });
+            } catch (e) {}
+        }
+
+        // 页面就绪启动
+        window.addEventListener('DOMContentLoaded', () => {
+            buildLetters();
+            render();
+            setTimeout(startHandwriting, 600);
+        });
+    </script>
+</body>
+</html>

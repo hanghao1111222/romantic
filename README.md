@@ -16,6 +16,7 @@
 ## 🌐 Live Demos / 在线体验
 
 无需安装任何环境，手机或电脑浏览器点击即开：
+- ✍️ **[全屏浪漫手写诗 · Roses given, fragrance in hand.](https://hanghao1111222.github.io/romantic/roses.html)** — 赠人玫瑰，手有余香 · 唯美英文行草书写 · 笔尖星芒流转 · 3D 翻卷漫天落瓣 · 纯净 Web Audio 琶音心音
 - 🌹 **[3D 粒子花朵实验室 (3D Botanical Lab)](https://hanghao1111222.github.io/romantic/)** — 9 款数学花型 · 16 款璀璨配色 · 源码流 · 3D 线框
 - ⚡ **[粒子萌宠工作室 (Particle Mascot Studio)](https://hanghao1111222.github.io/romantic/particle_mascot_studio.html)** — 兔八哥/皮卡丘/蓝兔/粉猫/紫狐 · 3D 视差拖拽 · 粒子爆炸散开
 
